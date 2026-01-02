@@ -22,6 +22,13 @@
       "when": 1767150965267,
       "tag": "0002_plain_jack_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767374237324,
+      "tag": "0003_chunky_hellfire_club",
+      "breakpoints": true
     }
   ]
 }

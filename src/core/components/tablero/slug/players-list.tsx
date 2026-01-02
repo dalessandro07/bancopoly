@@ -1,69 +1,59 @@
 'use client'
 
 import DeleteBtnPlayer from '@/src/core/components/tablero/delete-btn-player'
-import { useRealtimeTablero } from '@/src/core/hooks/tablero/slug'
-import { authClient } from '@/src/core/lib/auth/auth-client'
 import type { TPlayer } from '@/src/core/lib/db/schema'
-import { useRouter } from 'next/navigation'
-import { useCallback } from 'react'
-import { toast } from 'sonner'
 
-export default function PlayersList ({ tableroId, players: initialPlayers, isCreator }: { tableroId: string, players: TPlayer[], isCreator: boolean }) {
-  const { data: session } = authClient.useSession()
-  const router = useRouter()
+export default function PlayersList ({ tableroId, players, isCreator, currentPlayerId }: { tableroId: string, players: TPlayer[], isCreator: boolean, currentPlayerId?: string }) {
 
-  const handlePlayerDeleted = useCallback(() => {
-    toast.error('Has sido eliminado del tablero', {
-      id: 'player-deleted',
-    })
-    setTimeout(() => {
-      router.push('/')
-    }, 1000)
-  }, [router])
+  const formatBalance = (player: TPlayer) => {
+    if (player.isSystemPlayer && player.systemPlayerType === 'bank') {
+      return '∞'
+    }
+    return `$${player.balance}`
+  }
 
-  const handlePlayerJoined = useCallback((player: TPlayer) => {
-    toast.info(`${player.name} se unió al tablero`, {
-      id: `player-${player.id}-joined`,
-      position: 'top-center',
-      duration: 3000,
-    })
-  }, [])
-
-  const handlePlayerLeft = useCallback((player: TPlayer) => {
-    toast.info(`${player.name} salió del tablero`, {
-      id: `player-${player.id}-left`,
-      position: 'top-center',
-      duration: 3000,
-    })
-  }, [])
-
-  const { connectedUsers, players } = useRealtimeTablero({
-    roomId: tableroId as string,
-    initialPlayers,
-    currentUserId: session?.user?.id,
-    onPlayerDeleted: handlePlayerDeleted,
-    onPlayerJoined: handlePlayerJoined,
-    onPlayerLeft: handlePlayerLeft,
-  })
+  const shouldShowBalance = (player: TPlayer) => {
+    // Mostrar balance si es jugador del sistema (Banco, Parada Libre)
+    if (player.isSystemPlayer) return true
+    // Mostrar balance si es el jugador actual
+    if (player.id === currentPlayerId) return true
+    // Ocultar balance de otros jugadores
+    return false
+  }
 
   return (
-    <section>
-      <h2>Jugadores</h2>
-      <p>Jugadores conectados: {connectedUsers}</p>
-      <ul>
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-xl font-semibold">Jugadores</h2>
+        <p className="text-sm text-muted-foreground">Total de jugadores: {players.length}</p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {
           players && players.length > 0 ? (
             players.map((player) => (
-              <li key={player.id} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <span>{player.name} - ${player.balance}</span>
-                {isCreator && <DeleteBtnPlayer playerId={player.id} tableroId={tableroId} />}
-              </li>
+              <div
+                key={player.id}
+                className="border rounded-lg p-4 flex flex-col gap-2 bg-card"
+              >
+                <div className="flex-1">
+                  <p className="font-semibold text-sm truncate">{player.name}</p>
+                  {shouldShowBalance(player) ? (
+                    <p className="text-lg font-bold text-primary">{formatBalance(player)}</p>
+                  ) : (
+                    <p className="text-lg font-bold text-muted-foreground">***</p>
+                  )}
+                </div>
+                {isCreator && !player.isSystemPlayer && (
+                  <DeleteBtnPlayer playerId={player.id} tableroId={tableroId} />
+                )}
+              </div>
             ))
           ) : (
-            <li>No hay jugadores</li>
+            <p className="text-muted-foreground col-span-full">No hay jugadores</p>
           )
         }
-      </ul>
+      </div>
     </section>
   )
 }

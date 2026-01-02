@@ -130,6 +130,8 @@ export const player = pgTable("player", {
   userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   balance: integer("balance").default(1500).notNull(), // Dinero inicial en Monopoly
+  isSystemPlayer: boolean("is_system_player").default(false).notNull(), // Jugadores del sistema (Banco, Parada Libre)
+  systemPlayerType: text("system_player_type"), // 'bank', 'free_parking'
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .$onUpdate(() => /* @__PURE__ */ new Date())

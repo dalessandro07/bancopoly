@@ -2,8 +2,8 @@
 
 import { auth } from '@/src/core/lib/auth'
 import { db } from '@/src/core/lib/db'
-import { player, tablero, user, type TTablero } from '@/src/core/lib/db/schema'
-import { and, eq, or } from 'drizzle-orm'
+import { player, tablero, transaction, user, type TTablero } from '@/src/core/lib/db/schema'
+import { and, desc, eq, or } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -76,6 +76,108 @@ export async function actionGetTableroById (slug: string) {
   }
 }
 
+export async function actionGetPlayerTransactions (tableroId: string, playerId: string, isCreator: boolean = false) {
+  //* 1. Obtener la sesión del usuario
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+
+  if (!session?.user?.id) {
+    return { success: false, error: 'Usuario no autenticado' }
+  }
+
+  try {
+    //* 2. Verificar que el jugador pertenece al tablero y al usuario
+    const playerData = await db.select().from(player).where(
+      and(
+        eq(player.id, playerId),
+        eq(player.tableroId, tableroId),
+        eq(player.userId, session?.user?.id as string)
+      )
+    )
+
+    if (!playerData[0]) {
+      return { success: false, error: 'No tienes acceso a este jugador' }
+    }
+
+    //* 3. Obtener IDs de jugadores del sistema (para todos los usuarios)
+    const systemPlayers = await db
+      .select()
+      .from(player)
+      .where(
+        and(
+          eq(player.tableroId, tableroId),
+          eq(player.isSystemPlayer, true)
+        )
+      )
+    const systemPlayerIds = systemPlayers.map(p => p.id)
+
+    //* 4. Obtener transacciones donde el jugador es emisor o receptor
+    // Todos los usuarios ven transacciones del banco y parada libre
+    const transactionConditions = [
+      eq(transaction.fromPlayerId, playerId),
+      eq(transaction.toPlayerId, playerId)
+    ]
+
+    if (systemPlayerIds.length > 0) {
+      systemPlayerIds.forEach(systemId => {
+        transactionConditions.push(eq(transaction.fromPlayerId, systemId))
+        transactionConditions.push(eq(transaction.toPlayerId, systemId))
+      })
+    }
+
+    const transactions = await db
+      .select({
+        id: transaction.id,
+        tableroId: transaction.tableroId,
+        fromPlayerId: transaction.fromPlayerId,
+        toPlayerId: transaction.toPlayerId,
+        amount: transaction.amount,
+        type: transaction.type,
+        description: transaction.description,
+        createdAt: transaction.createdAt,
+      })
+      .from(transaction)
+      .where(
+        and(
+          eq(transaction.tableroId, tableroId),
+          or(...transactionConditions)
+        )
+      )
+      .orderBy(desc(transaction.createdAt))
+
+    //* 4. Obtener información de los jugadores involucrados
+    const playerIds = new Set<string>()
+    transactions.forEach(t => {
+      if (t.fromPlayerId) playerIds.add(t.fromPlayerId)
+      if (t.toPlayerId) playerIds.add(t.toPlayerId)
+    })
+
+    const playersData = await db
+      .select()
+      .from(player)
+      .where(
+        or(
+          ...Array.from(playerIds).map(id => eq(player.id, id))
+        )
+      )
+
+    const playersMap = new Map(playersData.map(p => [p.id, p]))
+
+    //* 5. Enriquecer las transacciones con información de los jugadores
+    const enrichedTransactions = transactions.map(t => ({
+      ...t,
+      fromPlayer: t.fromPlayerId ? playersMap.get(t.fromPlayerId) : null,
+      toPlayer: t.toPlayerId ? playersMap.get(t.toPlayerId) : null,
+    }))
+
+    return { success: true, data: enrichedTransactions }
+  } catch (error) {
+    console.error(error)
+    return { success: false, error: 'Error al obtener las transacciones' }
+  }
+}
+
 //* INSERT
 
 export async function actionCreateTablero (initialState: unknown, formData: FormData) {
@@ -102,18 +204,41 @@ export async function actionCreateTablero (initialState: unknown, formData: Form
       userId,
     }).returning()
 
-    await db.insert(player).values({
-      id: crypto.randomUUID(),
-      tableroId: newTablero[0].id,
-      userId: userId,
-      name: session?.user?.name as string,
-      balance: 1500,
-    })
+    // Crear jugadores del sistema (Banco y Parada Libre)
+    await db.insert(player).values([
+      {
+        id: crypto.randomUUID(),
+        tableroId: newTablero[0].id,
+        userId: null,
+        name: 'Banco',
+        balance: 999999999, // Balance infinito para el banco
+        isSystemPlayer: true,
+        systemPlayerType: 'bank',
+      },
+      {
+        id: crypto.randomUUID(),
+        tableroId: newTablero[0].id,
+        userId: null,
+        name: 'Parada Libre',
+        balance: 0,
+        isSystemPlayer: true,
+        systemPlayerType: 'free_parking',
+      },
+      // Crear el jugador del creador
+      {
+        id: crypto.randomUUID(),
+        tableroId: newTablero[0].id,
+        userId: userId,
+        name: session?.user?.name as string,
+        balance: 1500,
+        isSystemPlayer: false,
+        systemPlayerType: null,
+      }
+    ])
   } catch (error) {
     console.error(error)
     return { error: 'Error al crear el tablero' }
   } finally {
-    console.log(newTablero)
     revalidatePath('/')
     redirect(`/tablero/${newTablero[0].id}`)
   }
@@ -209,7 +334,12 @@ export async function actionDeletePlayer (playerId: string, tableroId: string) {
     return { success: false, error: 'Jugador no encontrado' }
   }
 
-  //* 4. Eliminar el jugador
+  //* 4. Verificar que no es un jugador del sistema
+  if (playerData[0].isSystemPlayer) {
+    return { success: false, error: 'No se pueden eliminar jugadores del sistema' }
+  }
+
+  //* 5. Eliminar el jugador
   try {
     await db.delete(player).where(eq(player.id, playerId))
     return { success: true, message: 'Jugador eliminado correctamente' }
@@ -260,5 +390,101 @@ export async function actionLeaveTablero (tableroId: string) {
   } finally {
     revalidatePath(`/tablero/${tableroId}`)
     redirect('/')
+  }
+}
+
+//* TRANSACTIONS
+
+export async function actionCreateTransaction (initialState: unknown, formData: FormData) {
+  //* 1. Obtener la sesión del usuario
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+
+  if (!session?.user?.id) {
+    return { success: false, error: 'Usuario no autenticado' }
+  }
+
+  //* 2. Obtener datos del formulario
+  const tableroId = formData.get('tableroId') as string
+  const fromPlayerId = formData.get('fromPlayerId') as string
+  const toPlayerId = formData.get('toPlayerId') as string
+  const amount = parseInt(formData.get('amount') as string)
+  const description = formData.get('description') as string
+
+  //* 3. Validaciones
+  if (!tableroId || !fromPlayerId || !toPlayerId || !amount) {
+    return { success: false, error: 'Faltan datos requeridos' }
+  }
+
+  if (amount <= 0) {
+    return { success: false, error: 'El monto debe ser mayor a 0' }
+  }
+
+  if (fromPlayerId === toPlayerId) {
+    return { success: false, error: 'No puedes transferir dinero a ti mismo' }
+  }
+
+  //* 4. Verificar que el usuario es jugador del tablero
+  const userPlayer = await db.select().from(player).where(
+    and(
+      eq(player.tableroId, tableroId),
+      eq(player.userId, session?.user?.id as string)
+    )
+  )
+
+  if (!userPlayer[0]) {
+    return { success: false, error: 'No eres jugador de este tablero' }
+  }
+
+  //* 5. Obtener jugadores involucrados
+  const [fromPlayer, toPlayer] = await Promise.all([
+    db.select().from(player).where(eq(player.id, fromPlayerId)),
+    db.select().from(player).where(eq(player.id, toPlayerId)),
+  ])
+
+  if (!fromPlayer[0] || !toPlayer[0]) {
+    return { success: false, error: 'Jugador no encontrado' }
+  }
+
+  //* 6. Verificar que ambos jugadores pertenecen al mismo tablero
+  if (fromPlayer[0].tableroId !== tableroId || toPlayer[0].tableroId !== tableroId) {
+    return { success: false, error: 'Los jugadores deben pertenecer al mismo tablero' }
+  }
+
+  //* 7. Verificar que el jugador origen tiene suficiente dinero (excepto el Banco)
+  if (!fromPlayer[0].isSystemPlayer && fromPlayer[0].balance < amount) {
+    return { success: false, error: 'Saldo insuficiente' }
+  }
+
+  //* 8. Realizar la transacción
+  try {
+    // Actualizar balances
+    await Promise.all([
+      db.update(player)
+        .set({ balance: fromPlayer[0].balance - amount })
+        .where(eq(player.id, fromPlayerId)),
+      db.update(player)
+        .set({ balance: toPlayer[0].balance + amount })
+        .where(eq(player.id, toPlayerId)),
+    ])
+
+    // Registrar la transacción
+    await db.insert(transaction).values({
+      id: crypto.randomUUID(),
+      tableroId,
+      fromPlayerId,
+      toPlayerId,
+      amount,
+      type: 'transfer',
+      description: description || `Transferencia de ${fromPlayer[0].name} a ${toPlayer[0].name}`,
+    })
+
+    return { success: true, message: 'Transacción realizada correctamente' }
+  } catch (error) {
+    console.error(error)
+    return { success: false, error: 'Error al realizar la transacción' }
+  } finally {
+    revalidatePath(`/tablero/${tableroId}`)
   }
 }
