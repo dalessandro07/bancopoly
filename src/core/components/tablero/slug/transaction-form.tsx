@@ -5,56 +5,108 @@ import { Button } from '@/src/core/components/ui/button'
 import { Input } from '@/src/core/components/ui/input'
 import { Label } from '@/src/core/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/src/core/components/ui/select'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/src/core/components/ui/sheet'
 import type { TPlayer } from '@/src/core/lib/db/schema'
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
+
+interface TransactionFormProps {
+  tableroId: string
+  players: TPlayer[]
+  currentPlayerId?: string
+  isCreator?: boolean
+  preselectedToPlayerId?: string
+  onOpenChange?: (open: boolean) => void
+}
 
 export default function TransactionForm ({
   tableroId,
   players,
   currentPlayerId,
-  isCreator = false
-}: {
-  tableroId: string
-  players: TPlayer[]
-  currentPlayerId?: string
-  isCreator?: boolean
-}) {
-  const [state, formAction, isPending] = useActionState(actionCreateTransaction, null)
+  isCreator = false,
+  preselectedToPlayerId,
+  onOpenChange,
+}: TransactionFormProps) {
+  const [isPending, startTransition] = useTransition()
   const [fromPlayerId, setFromPlayerId] = useState<string>('')
-  const [toPlayerId, setToPlayerId] = useState<string>('')
+  const [toPlayerId, setToPlayerId] = useState<string>(() => preselectedToPlayerId || '')
+  const [amount, setAmount] = useState<string>('')
+  const [description, setDescription] = useState<string>('')
+  const [isOpen, setIsOpen] = useState(() => !!preselectedToPlayerId)
+  const [formKey, setFormKey] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
 
+  // Abrir el formulario cuando se preselecciona un jugador
   useEffect(() => {
-    if (state?.error) {
-      toast.error(state.error)
+    if (preselectedToPlayerId) {
+      startTransition(() => {
+        setToPlayerId(preselectedToPlayerId)
+        setIsOpen(true)
+      })
+      if (onOpenChange) {
+        onOpenChange(true)
+      }
     }
-  }, [state])
+  }, [preselectedToPlayerId, onOpenChange])
 
-  useEffect(() => {
-    if (state?.success) {
-      // Resetear el formulario después de una transacción exitosa
-      const timer = setTimeout(() => {
+  // Acción del formulario envuelta
+  const handleSubmit = async (formData: FormData) => {
+    startTransition(async () => {
+      const result = await actionCreateTransaction(null, formData)
+
+      if (result?.error) {
+        toast.error(result.error)
+      }
+
+      if (result?.success) {
+        // Resetear y cerrar
         setFromPlayerId('')
         setToPlayerId('')
-        if (formRef.current) {
-          formRef.current.reset()
+        setAmount('')
+        setDescription('')
+        setIsOpen(false)
+        if (onOpenChange) {
+          onOpenChange(false)
         }
-      }, 0)
-      return () => clearTimeout(timer)
+        setFormKey(k => k + 1)
+      }
+    })
+  }
+
+  // Handler para botones de acceso rápido
+  const handleQuickAmount = (quickAmount: number, quickDescription?: string) => {
+    setAmount(quickAmount.toString())
+    if (quickDescription) {
+      setDescription(quickDescription)
     }
-  }, [state?.success])
+  }
 
   // Filtrar jugadores para el selector "Desde"
   // Solo el creador puede enviar desde banco o parada libre
-  const fromPlayers = players.filter(p => {
+  const fromPlayers = useMemo(() => players.filter(p => {
     if (p.id === currentPlayerId) return true
     if (p.isSystemPlayer && isCreator) return true
     return false
-  })
+  }), [players, currentPlayerId, isCreator])
+
+  // Determinar el jugador origen actual (para filtrar en "Hacia")
+  const actualFromPlayerId = isCreator ? fromPlayerId : currentPlayerId
+
+  // Obtener el jugador origen seleccionado
+  const fromPlayer = useMemo(() => {
+    if (!actualFromPlayerId) return null
+    return players.find(p => p.id === actualFromPlayerId)
+  }, [players, actualFromPlayerId])
+
+  // Verificar si el jugador origen es el banco
+  const isFromBank = fromPlayer?.isSystemPlayer && fromPlayer?.systemPlayerType === 'bank'
 
   // Filtrar jugadores para el selector "Hacia"
-  const toPlayers = players
+  // No mostrar el jugador que está enviando
+  const toPlayers = useMemo(() =>
+    players.filter(p => p.id !== actualFromPlayerId),
+    [players, actualFromPlayerId]
+  )
 
   const formatBalance = (player: TPlayer) => {
     if (player.isSystemPlayer && player.systemPlayerType === 'bank') {
@@ -72,19 +124,73 @@ export default function TransactionForm ({
     return player.name
   }
 
-  return (
-    <section className="space-y-4">
-      <h2 className="text-xl font-semibold">Transferir dinero</h2>
-      <form ref={formRef} action={formAction} className="flex flex-col gap-4 max-w-md">
-        <input type="hidden" name="tableroId" value={tableroId} />
+  // Handler para cambiar fromPlayerId y resetear toPlayerId si es necesario
+  const handleFromPlayerChange = (value: string) => {
+    setFromPlayerId(value)
+    // Si el toPlayerId actual es igual al nuevo fromPlayerId, resetearlo
+    if (toPlayerId === value) {
+      setToPlayerId('')
+    }
+  }
 
-        {isCreator ? (
+  return (
+    <Sheet open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open)
+      if (!open) {
+        // Resetear cuando se cierra
+        setAmount('')
+        setDescription('')
+        if (preselectedToPlayerId) {
+          setToPlayerId('')
+        }
+      }
+      if (onOpenChange) {
+        onOpenChange(open)
+      }
+    }}>
+      <SheetContent side="bottom" className="rounded-t-xl">
+        <SheetHeader>
+          <SheetTitle>Transferir dinero</SheetTitle>
+          <SheetDescription>
+            Envía dinero a otro jugador del tablero
+          </SheetDescription>
+        </SheetHeader>
+
+        <form key={formKey} ref={formRef} action={handleSubmit} className="flex flex-col gap-4 p-4">
+          <input type="hidden" name="tableroId" value={tableroId} />
+
+          {isCreator ? (
+            <div className="space-y-2">
+              <Label htmlFor="fromPlayerId">Desde:</Label>
+              <Select
+                name="fromPlayerId"
+                value={fromPlayerId}
+                onValueChange={handleFromPlayerChange}
+                disabled={isPending}
+                required
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar jugador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fromPlayers.map((player) => (
+                    <SelectItem key={player.id} value={player.id}>
+                      {formatPlayerOption(player)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <input type="hidden" name="fromPlayerId" value={currentPlayerId || ''} />
+          )}
+
           <div className="space-y-2">
-            <Label htmlFor="fromPlayerId">Desde:</Label>
+            <Label htmlFor="toPlayerId">Hacia:</Label>
             <Select
-              name="fromPlayerId"
-              value={fromPlayerId}
-              onValueChange={setFromPlayerId}
+              name="toPlayerId"
+              value={toPlayerId}
+              onValueChange={setToPlayerId}
               disabled={isPending}
               required
             >
@@ -92,7 +198,7 @@ export default function TransactionForm ({
                 <SelectValue placeholder="Seleccionar jugador" />
               </SelectTrigger>
               <SelectContent>
-                {fromPlayers.map((player) => (
+                {toPlayers.map((player) => (
                   <SelectItem key={player.id} value={player.id}>
                     {formatPlayerOption(player)}
                   </SelectItem>
@@ -100,64 +206,72 @@ export default function TransactionForm ({
               </SelectContent>
             </Select>
           </div>
-        ) : (
-          <input type="hidden" name="fromPlayerId" value={currentPlayerId || ''} />
-        )}
 
-        <div className="space-y-2">
-          <Label htmlFor="toPlayerId">Hacia:</Label>
-          <Select
-            name="toPlayerId"
-            value={toPlayerId}
-            onValueChange={setToPlayerId}
-            disabled={isPending}
-            required
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar jugador" />
-            </SelectTrigger>
-            <SelectContent>
-              {toPlayers.map((player) => (
-                <SelectItem key={player.id} value={player.id}>
-                  {formatPlayerOption(player)}
-                </SelectItem>
+          <div className="space-y-2">
+            <Label htmlFor="amount">Monto:</Label>
+            <Input
+              type="number"
+              id="amount"
+              name="amount"
+              min="1"
+              required
+              disabled={isPending}
+              placeholder="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            <div className="flex gap-2 flex-wrap mt-2">
+              {[5, 10, 20, 50, 100].map((quickAmount) => (
+                <Button
+                  key={quickAmount}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuickAmount(quickAmount)}
+                  disabled={isPending}
+                  className="flex-1 min-w-[60px]"
+                >
+                  ${quickAmount}
+                </Button>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
+              {isFromBank && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuickAmount(200, 'Salida')}
+                  disabled={isPending}
+                  className="flex-1 min-w-[60px] bg-primary/10 border-primary/20"
+                >
+                  $200
+                </Button>
+              )}
+            </div>
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="amount">Monto:</Label>
-          <Input
-            type="number"
-            id="amount"
-            name="amount"
-            min="1"
-            required
+          <div className="space-y-2">
+            <Label htmlFor="description">Descripción (opcional):</Label>
+            <Input
+              type="text"
+              id="description"
+              name="description"
+              disabled={isPending}
+              placeholder="Concepto de la transferencia"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <Button
+            type="submit"
             disabled={isPending}
-            placeholder="0"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="description">Descripción (opcional):</Label>
-          <Input
-            type="text"
-            id="description"
-            name="description"
-            disabled={isPending}
-            placeholder="Concepto de la transferencia"
-          />
-        </div>
-
-        <Button
-          type="submit"
-          disabled={isPending}
-          className="w-full"
-        >
-          {isPending ? 'Procesando...' : 'Transferir'}
-        </Button>
-      </form>
-    </section>
+            className="w-full"
+            size="lg"
+          >
+            {isPending ? 'Procesando...' : 'Transferir'}
+          </Button>
+        </form>
+      </SheetContent>
+    </Sheet>
   )
 }

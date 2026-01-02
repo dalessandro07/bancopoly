@@ -31,7 +31,7 @@ export default function RootLayout ({
         <div className='h-dvh'>
           {children}
         </div>
-        <Toaster />
+        <Toaster position="top-center" />
       </body>
     </html>
   )

@@ -1,13 +1,9 @@
 import { actionGetPlayerTransactions, actionGetTableroById } from '@/src/core/actions/tablero'
-import DeleteBtnTablero from '@/src/core/components/tablero/delete-btn-tablero'
 import FormJoinTablero from '@/src/core/components/tablero/form-join-tablero'
-import LeaveBtnTablero from '@/src/core/components/tablero/leave-btn-tablero'
-import CurrentPlayerBalance from '@/src/core/components/tablero/slug/current-player-balance'
 import PlayersList from '@/src/core/components/tablero/slug/players-list'
-import TransactionForm from '@/src/core/components/tablero/slug/transaction-form'
-import TransactionHistory from '@/src/core/components/tablero/slug/transaction-history'
+import TableroRealtimeWrapper from '@/src/core/components/tablero/slug/tablero-realtime-wrapper'
 import { auth } from '@/src/core/lib/auth'
-import type { TPlayer, TTransaction } from '@/src/core/lib/db/schema'
+import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
 import { headers } from 'next/headers'
 
 type EnrichedTransaction = TTransaction & {
@@ -15,7 +11,7 @@ type EnrichedTransaction = TTransaction & {
   toPlayer?: TPlayer | null
 }
 
-export default async function TableroPage ({ params }: { params: Promise<{ slug: string }> }) {
+export default async function TableroPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
 
   const session = await auth.api.getSession({
@@ -31,66 +27,42 @@ export default async function TableroPage ({ params }: { params: Promise<{ slug:
   // Obtener transacciones del jugador si está en el tablero
   let playerTransactions: EnrichedTransaction[] = []
   if (isPlayer && currentPlayer?.id) {
-    const transactionsResult = await actionGetPlayerTransactions(slug, currentPlayer.id, isCreator)
+    const transactionsResult = await actionGetPlayerTransactions(slug, currentPlayer.id)
     if (transactionsResult.success && transactionsResult.data) {
       playerTransactions = transactionsResult.data
     }
   }
 
   return (
-    <main className='p-5 flex flex-col justify-between h-full gap-4'>
-      <div className='flex flex-col gap-4'>
-        <header>
-          <h1>Tablero {tablero.tablero?.name}</h1>
-        </header>
+    <main className='p-5 flex flex-col h-full'>
+      <header className="mb-4">
+        <h1 className="text-2xl font-bold">{tablero.tablero?.name}</h1>
+      </header>
 
-        {isPlayer ? (
-          <CurrentPlayerBalance
-            tableroId={tablero.tablero?.id as string}
-            players={tablero.players || []}
-            currentPlayerId={currentPlayer?.id}
-          />
-        ) : (
+      {isPlayer && tablero.creator ? (
+        <TableroRealtimeWrapper
+          tableroId={tablero.tablero?.id as string}
+          tableroName={tablero.tablero?.name as string}
+          initialPlayers={tablero.players || []}
+          initialTransactions={playerTransactions}
+          currentPlayerId={currentPlayer?.id}
+          isCreator={isCreator}
+          creator={tablero.creator as User}
+        />
+      ) : (
+        <div className="flex flex-col gap-4">
           <FormJoinTablero tableroId={tablero.tablero?.id as string} />
-        )}
-
-        {tablero.players && <PlayersList tableroId={tablero.tablero?.id as string} players={tablero.players} isCreator={isCreator} currentPlayerId={currentPlayer?.id} />}
-
-        {isPlayer && tablero.players && (
-          <>
-            <TransactionForm
+          {tablero.players && (
+            <PlayersList
               tableroId={tablero.tablero?.id as string}
               players={tablero.players}
-              currentPlayerId={currentPlayer?.id}
               isCreator={isCreator}
-            />
-
-            <TransactionHistory
-              tableroId={tablero.tablero?.id as string}
-              players={tablero.players}
               currentPlayerId={currentPlayer?.id}
-              initialTransactions={playerTransactions}
+              enableRealtime={true}
             />
-          </>
-        )}
-      </div>
-
-      <footer className='flex justify-between items-center'>
-        {tablero.creator && (
-          <section>
-            <h2>Tablero creado por:</h2>
-            <p>{tablero.creator.name}</p>
-          </section>
-        )}
-        <div className='flex gap-2'>
-          {isCreator && (
-            <DeleteBtnTablero tableroId={tablero.tablero?.id as string} />
-          )}
-          {isPlayer && !isCreator && (
-            <LeaveBtnTablero tableroId={tablero.tablero?.id as string} />
           )}
         </div>
-      </footer>
+      )}
     </main>
   )
 }

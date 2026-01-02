@@ -1,15 +1,24 @@
 'use client'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/src/core/components/ui/avatar'
+import { Button } from '@/src/core/components/ui/button'
 import { ScrollArea } from '@/src/core/components/ui/scroll-area'
-import type { TPlayer, TTransaction } from '@/src/core/lib/db/schema'
-import { ArrowDownIcon, ArrowUpIcon } from 'lucide-react'
+import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
+import { ArrowRightIcon, BanknoteIcon, FilterIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
 
-type EnrichedTransaction = TTransaction & {
-  fromPlayer?: TPlayer | null
-  toPlayer?: TPlayer | null
+type PlayerWithUser = TPlayer & {
+  user?: User | null
 }
 
-export default function TransactionHistory ({
+type EnrichedTransaction = TTransaction & {
+  fromPlayer?: PlayerWithUser | null
+  toPlayer?: PlayerWithUser | null
+}
+
+type FilterType = 'all' | 'sent' | 'received' | 'system'
+
+export default function TransactionHistory({
   currentPlayerId,
   initialTransactions = []
 }: {
@@ -18,87 +27,270 @@ export default function TransactionHistory ({
   currentPlayerId?: string
   initialTransactions?: EnrichedTransaction[]
 }) {
-  const transactions = initialTransactions
+  const [filter, setFilter] = useState<FilterType>('all')
 
   const formatDate = (date: Date | string) => {
     const d = new Date(date)
     return d.toLocaleString('es-ES', {
       day: '2-digit',
-      month: '2-digit',
+      month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     })
   }
 
-  const formatBalance = (player: TPlayer | null | undefined) => {
-    if (!player) return 'Desconocido'
-    if (player.isSystemPlayer && player.systemPlayerType === 'bank') {
-      return 'Banco'
-    }
-    return player.name
+  const filteredTransactions = useMemo(() => {
+    const isCurrentPlayerMatch = (playerId: string | null) => playerId === currentPlayerId
+
+    if (filter === 'all') return initialTransactions
+
+    return initialTransactions.filter((transaction) => {
+      const isSender = isCurrentPlayerMatch(transaction.fromPlayerId)
+      const isReceiver = isCurrentPlayerMatch(transaction.toPlayerId)
+      const isSystem = transaction.fromPlayer?.isSystemPlayer || transaction.toPlayer?.isSystemPlayer
+
+      if (filter === 'sent') return isSender
+      if (filter === 'received') return isReceiver
+      if (filter === 'system') return isSystem && !isSender && !isReceiver
+
+      return true
+    })
+  }, [initialTransactions, filter, currentPlayerId])
+
+  const isCurrentPlayer = (playerId: string | null) => playerId === currentPlayerId
+
+  const transactions = filteredTransactions
+
+  if (filteredTransactions.length === 0 && initialTransactions.length > 0) {
+    return (
+      <div className="flex flex-col h-full -mx-5 pb-20">
+        <div className="px-5 pb-3 space-y-3">
+          <div>
+            <h2 className="text-xl font-semibold">Historial</h2>
+            <p className="text-sm text-muted-foreground">
+              0 transacciones
+              {filter !== 'all' && ` (${initialTransactions.length} total)`}
+            </p>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant={filter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('all')}
+              className="h-8 text-xs"
+            >
+              Todas
+            </Button>
+            <Button
+              variant={filter === 'sent' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('sent')}
+              className="h-8 text-xs"
+            >
+              Enviadas
+            </Button>
+            <Button
+              variant={filter === 'received' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('received')}
+              className="h-8 text-xs"
+            >
+              Recibidas
+            </Button>
+            <Button
+              variant={filter === 'system' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('system')}
+              className="h-8 text-xs"
+            >
+              Sistema
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center flex-1 py-12">
+          <div className="inline-flex items-center justify-center size-16 rounded-full bg-muted mb-4">
+            <FilterIcon className="size-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">No hay transacciones con este filtro</h2>
+          <p className="text-muted-foreground text-sm text-center">
+            Intenta con otro filtro
+          </p>
+        </div>
+      </div>
+    )
   }
 
   if (transactions.length === 0) {
     return (
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Historial de transacciones</h2>
-        <p className="text-muted-foreground text-sm">No hay transacciones aún</p>
-      </section>
+      <div className="flex flex-col items-center justify-center flex-1 py-12">
+        <div className="inline-flex items-center justify-center size-16 rounded-full bg-muted mb-4">
+          <BanknoteIcon className="size-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-xl font-semibold mb-2">Sin transacciones</h2>
+        <p className="text-muted-foreground text-sm text-center">
+          Las transacciones aparecerán aquí
+        </p>
+      </div>
     )
   }
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-xl font-semibold">Historial de transacciones</h2>
-      <ScrollArea className="h-96 w-full rounded-md border">
-        <div className="space-y-2 p-4">
+    <div className="flex flex-col h-full -mx-5 pb-20">
+      <div className="px-5 pb-3 space-y-3">
+        <div>
+          <h2 className="text-xl font-semibold">Historial</h2>
+          <p className="text-sm text-muted-foreground">
+            {filteredTransactions.length} {filteredTransactions.length === 1 ? 'transacción' : 'transacciones'}
+            {filter !== 'all' && ` (${initialTransactions.length} total)`}
+          </p>
+        </div>
+
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={filter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('all')}
+            className="h-8 text-xs"
+          >
+            Todas
+          </Button>
+          <Button
+            variant={filter === 'sent' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('sent')}
+            className="h-8 text-xs"
+          >
+            Enviadas
+          </Button>
+          <Button
+            variant={filter === 'received' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('received')}
+            className="h-8 text-xs"
+          >
+            Recibidas
+          </Button>
+          <Button
+            variant={filter === 'system' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('system')}
+            className="h-8 text-xs"
+          >
+            Sistema
+          </Button>
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="space-y-2 px-5 pb-24">
           {transactions.map((transaction) => {
-            const isSender = transaction.fromPlayerId === currentPlayerId
-            const isReceiver = transaction.toPlayerId === currentPlayerId
+            const isSender = isCurrentPlayer(transaction.fromPlayerId)
+            const isReceiver = isCurrentPlayer(transaction.toPlayerId)
+
+            const fromPlayer = transaction.fromPlayer
+            const toPlayer = transaction.toPlayer
+
+            // Determinar nombres para mostrar
+            const fromName = fromPlayer?.isSystemPlayer
+              ? fromPlayer.systemPlayerType === 'bank'
+                ? 'Banco'
+                : fromPlayer.systemPlayerType === 'free_parking'
+                ? 'Parada Libre'
+                : fromPlayer.name
+              : fromPlayer?.name || 'Desconocido'
+
+            const toName = toPlayer?.isSystemPlayer
+              ? toPlayer.systemPlayerType === 'bank'
+                ? 'Banco'
+                : toPlayer.systemPlayerType === 'free_parking'
+                ? 'Parada Libre'
+                : toPlayer.name
+              : toPlayer?.name || 'Desconocido'
 
             return (
               <div
                 key={transaction.id}
-                className="flex items-start gap-3 p-3 rounded-lg border bg-card text-card-foreground"
+                className="p-4 rounded-xl border bg-card"
               >
-                <div className={`mt-1 ${isSender ? 'text-destructive' : 'text-green-600'}`}>
-                  {isSender ? (
-                    <ArrowUpIcon className="size-5" />
-                  ) : (
-                    <ArrowDownIcon className="size-5" />
-                  )}
+                {/* Monto y Fecha */}
+                <div className="flex items-start justify-between mb-3">
+                  <span className={`text-3xl font-bold ${
+                    isSender ? 'text-destructive' : isReceiver ? 'text-green-500' : 'text-foreground'
+                  }`}>
+                    {isSender ? '-' : isReceiver ? '+' : ''}${transaction.amount.toLocaleString()}
+                  </span>
+                  <div className="text-xs font-medium text-muted-foreground">
+                    {formatDate(transaction.createdAt)}
+                  </div>
                 </div>
 
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium">
-                      {isSender && transaction.toPlayer ? (
-                        <>Enviaste a <span className="text-primary">{formatBalance(transaction.toPlayer)}</span></>
-                      ) : isReceiver && transaction.fromPlayer ? (
-                        <>Recibiste de <span className="text-primary">{formatBalance(transaction.fromPlayer)}</span></>
-                      ) : (
-                        <>Transacción del sistema</>
-                      )}
-                    </p>
-                    <p className={`font-bold ${isSender ? 'text-destructive' : 'text-green-600'}`}>
-                      {isSender ? '-' : '+'}${transaction.amount.toLocaleString()}
-                    </p>
+                {/* Jugadores involucrados */}
+                <div className="flex items-center gap-3 mb-3">
+                  {/* Jugador que envía */}
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Avatar className={`size-8 border-2 ${
+                      isSender ? 'border-destructive' : 'border-muted'
+                    }`}>
+                      {fromPlayer?.user?.image ? (
+                        <AvatarImage src={fromPlayer.user.image} alt={fromName} />
+                      ) : null}
+                      <AvatarFallback className={`text-xs ${
+                        isSender ? 'bg-destructive/10 text-destructive' : 'bg-muted'
+                      }`}>
+                        {fromName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${
+                        isSender ? 'text-destructive' : 'text-muted-foreground'
+                      }`}>
+                        {fromName}
+                      </p>
+                    </div>
                   </div>
 
-                  {transaction.description && (
-                    <p className="text-sm text-muted-foreground">{transaction.description}</p>
-                  )}
+                  {/* Flecha */}
+                  <ArrowRightIcon className={`size-5 flex-shrink-0 ${
+                    isSender ? 'text-destructive' : isReceiver ? 'text-green-500' : 'text-muted-foreground'
+                  }`} />
 
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(transaction.createdAt)}
-                  </p>
+                  {/* Jugador que recibe */}
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 text-right">
+                      <p className={`text-sm font-medium truncate ${
+                        isReceiver ? 'text-green-500' : 'text-muted-foreground'
+                      }`}>
+                        {toName}
+                      </p>
+                    </div>
+                    <Avatar className={`size-8 border-2 ${
+                      isReceiver ? 'border-green-500' : 'border-muted'
+                    }`}>
+                      {toPlayer?.user?.image ? (
+                        <AvatarImage src={toPlayer.user.image} alt={toName} />
+                      ) : null}
+                      <AvatarFallback className={`text-xs ${
+                        isReceiver ? 'bg-green-500/10 text-green-500' : 'bg-muted'
+                      }`}>
+                        {toName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
                 </div>
+
+                {/* Descripción si existe */}
+                {transaction.description && (
+                  <p className="text-sm text-foreground line-clamp-2 mt-3 p-3 bg-muted/50 rounded-lg">
+                    {transaction.description}
+                  </p>
+                )}
               </div>
             )
           })}
         </div>
       </ScrollArea>
-    </section>
+    </div>
   )
 }

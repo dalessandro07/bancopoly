@@ -58,11 +58,22 @@ export async function actionGetTableroById (slug: string) {
       return { success: false, error: 'Tablero no encontrado' }
     }
 
-    //* 2. Obtener los jugadores y el creador
-    const [players, creator] = await Promise.all([
-      db.select().from(player).where(eq(player.tableroId, tableroData[0].id)),
-      db.select().from(user).where(eq(user.id, tableroData[0].userId)),
-    ])
+    //* 2. Obtener los jugadores con información de usuario y el creador
+    const playersData = await db
+      .select({
+        player: player,
+        user: user,
+      })
+      .from(player)
+      .leftJoin(user, eq(player.userId, user.id))
+      .where(eq(player.tableroId, tableroData[0].id))
+
+    const players = playersData.map(({ player, user }) => ({
+      ...player,
+      user: user || null,
+    }))
+
+    const creator = await db.select().from(user).where(eq(user.id, tableroData[0].userId))
 
     //* 3. Retornar los datos
     return {
@@ -76,7 +87,7 @@ export async function actionGetTableroById (slug: string) {
   }
 }
 
-export async function actionGetPlayerTransactions (tableroId: string, playerId: string, isCreator: boolean = false) {
+export async function actionGetPlayerTransactions (tableroId: string, playerId: string) {
   //* 1. Obtener la sesión del usuario
   const session = await auth.api.getSession({
     headers: await headers()
@@ -154,15 +165,27 @@ export async function actionGetPlayerTransactions (tableroId: string, playerId: 
     })
 
     const playersData = await db
-      .select()
+      .select({
+        player: player,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        },
+      })
       .from(player)
+      .leftJoin(user, eq(player.userId, user.id))
       .where(
         or(
           ...Array.from(playerIds).map(id => eq(player.id, id))
         )
       )
 
-    const playersMap = new Map(playersData.map(p => [p.id, p]))
+    const playersMap = new Map(playersData.map(({ player, user }) => [player.id, {
+      ...player,
+      user: user || null,
+    }]))
 
     //* 5. Enriquecer las transacciones con información de los jugadores
     const enrichedTransactions = transactions.map(t => ({
@@ -477,7 +500,7 @@ export async function actionCreateTransaction (initialState: unknown, formData: 
       toPlayerId,
       amount,
       type: 'transfer',
-      description: description || `Transferencia de ${fromPlayer[0].name} a ${toPlayer[0].name}`,
+      description: description || null,
     })
 
     return { success: true, message: 'Transacción realizada correctamente' }

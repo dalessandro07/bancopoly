@@ -32,7 +32,7 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
       <section className='flex flex-col grow'>
         {
           session && session.user && (
-            <div>
+            <div className='flex flex-col gap-5'>
               <FormNewTablero />
               <Suspense fallback={<div>Cargando tableros...</div>}>
                 <ListTablero />
