@@ -20,11 +20,13 @@ export default function DeleteBtnTablero ({ tableroId }: { tableroId: string }) 
   }
 
   return (
-    <form action={handleDeleteTablero}>
-      <input type="hidden" name="tableroId" value={tableroId} />
-      <Button variant="destructive" type="submit" disabled={isPending}>
-        {isPending ? 'Eliminando...' : 'Eliminar'}
-      </Button>
-    </form>
+    <div onClick={(e) => e.preventDefault()}>
+      <form action={handleDeleteTablero}>
+        <input type="hidden" name="tableroId" value={tableroId} />
+        <Button variant="destructive" type="submit" disabled={isPending}>
+          {isPending ? 'Eliminando...' : 'Eliminar'}
+        </Button>
+      </form>
+    </div>
   )
 }

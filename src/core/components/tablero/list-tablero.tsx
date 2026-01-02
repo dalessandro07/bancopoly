@@ -1,9 +1,9 @@
 import { actionGetTablerosFromUser } from '@/src/core/actions/tablero'
 import DeleteBtnTablero from '@/src/core/components/tablero/delete-btn-tablero'
 import { auth } from '@/src/core/lib/auth'
-import Link from 'next/link'
-import { headers } from 'next/headers'
 import { CrownIcon, LayoutGridIcon } from 'lucide-react'
+import { headers } from 'next/headers'
+import Link from 'next/link'
 
 export default async function ListTablero () {
   const session = await auth.api.getSession({
@@ -48,14 +48,12 @@ export default async function ListTablero () {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Toca para ver detalles
+                          Toca para ingresar
                         </p>
                       </div>
 
                       {isCreator && (
-                        <div onClick={(e) => e.preventDefault()}>
-                          <DeleteBtnTablero tableroId={tablero.id} />
-                        </div>
+                        <DeleteBtnTablero tableroId={tablero.id} />
                       )}
                     </div>
                   </Link>
