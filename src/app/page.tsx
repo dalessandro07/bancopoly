@@ -18,10 +18,10 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
   // Si no hay sesión, mostrar página de login centrada
   if (!session || !session.user) {
     return (
-      <main className='flex items-center justify-center min-h-screen p-5 bg-gradient-to-br from-background via-background to-muted/20'>
+      <main className='flex items-center justify-center min-h-screen p-5 bg-linear-to-br from-background via-background to-muted/20'>
         <div className='w-full max-w-md space-y-6'>
           <div className='text-center space-y-2'>
-            <h1 className="text-5xl font-luckiest-guy bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <h1 className="text-5xl font-luckiest-guy bg-linear-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               {APP_NAME}
             </h1>
             <p className="text-muted-foreground text-sm">

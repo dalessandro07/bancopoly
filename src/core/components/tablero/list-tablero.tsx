@@ -27,13 +27,15 @@ export default async function ListTablero () {
               {tableros.map((tablero) => {
                 const isCreator = tablero.userId === session?.user?.id
                 return (
-                  <Link
+                  <div
                     key={tablero.id}
-                    href={`/tablero/${tablero.id}`}
                     className="group relative bg-card border rounded-xl p-4 hover:border-primary/50 hover:shadow-md transition-all duration-200"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
+                      <Link
+                        href={`/tablero/${tablero.id}`}
+                        className="flex-1 min-w-0"
+                      >
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">
                             {tablero.name}
@@ -50,13 +52,13 @@ export default async function ListTablero () {
                         <p className="text-sm text-muted-foreground">
                           Toca para ingresar
                         </p>
-                      </div>
+                      </Link>
 
                       {isCreator && (
                         <DeleteBtnTablero tableroId={tablero.id} />
                       )}
                     </div>
-                  </Link>
+                  </div>
                 )
               })}
             </div>
