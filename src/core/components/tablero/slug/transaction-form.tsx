@@ -41,13 +41,17 @@ export default function TransactionForm ({
     if (preselectedToPlayerId) {
       startTransition(() => {
         setToPlayerId(preselectedToPlayerId)
+        // Si es creador y no hay fromPlayerId seleccionado, seleccionar automáticamente su jugador
+        if (isCreator && !fromPlayerId && currentPlayerId) {
+          setFromPlayerId(currentPlayerId)
+        }
         setIsOpen(true)
       })
       if (onOpenChange) {
         onOpenChange(true)
       }
     }
-  }, [preselectedToPlayerId, onOpenChange])
+  }, [preselectedToPlayerId, onOpenChange, isCreator, fromPlayerId, currentPlayerId])
 
   // Acción del formulario envuelta
   const handleSubmit = async (formData: FormData) => {
@@ -190,7 +194,13 @@ export default function TransactionForm ({
             <Select
               name="toPlayerId"
               value={toPlayerId}
-              onValueChange={setToPlayerId}
+              onValueChange={(value) => {
+                setToPlayerId(value)
+                // Si es creador y no hay fromPlayerId seleccionado, seleccionar automáticamente su jugador
+                if (isCreator && !fromPlayerId && currentPlayerId) {
+                  setFromPlayerId(currentPlayerId)
+                }
+              }}
               disabled={isPending}
               required
             >
