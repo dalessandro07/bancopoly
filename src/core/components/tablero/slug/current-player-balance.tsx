@@ -25,14 +25,18 @@ export default function CurrentPlayerBalance ({
 
   const isPositive = currentPlayer.balance >= 0
   const balanceColor = isPositive ? 'text-green-500' : 'text-destructive'
+  const isLowBalance = currentPlayer.balance < 50 && currentPlayer.balance >= 0
+  const cardBgClass = isLowBalance
+    ? 'bg-gradient-to-br from-destructive/10 via-destructive/5 to-background border-2 border-destructive/20'
+    : 'bg-gradient-to-br from-primary/10 via-primary/5 to-background border-2 border-primary/20'
 
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border-2 border-primary/20 p-6 shadow-lg">
+    <section className={`relative overflow-hidden rounded-2xl ${cardBgClass} p-6 shadow-lg`}>
       <div className="relative z-10 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-full bg-primary/10">
-              <WalletIcon className="size-6 text-primary" />
+            <div className={`p-3 rounded-full ${isLowBalance ? 'bg-destructive/10' : 'bg-primary/10'}`}>
+              <WalletIcon className={`size-6 ${isLowBalance ? 'text-destructive' : 'text-primary'}`} />
             </div>
             <div>
               <h2 className="text-sm font-medium text-muted-foreground">Tu saldo</h2>
@@ -42,9 +46,9 @@ export default function CurrentPlayerBalance ({
             </div>
           </div>
           {currentPlayer.user && (
-            <Avatar className="size-12 border-2 border-primary/20">
+            <Avatar className={`size-12 border-2 ${isLowBalance ? 'border-destructive/20' : 'border-primary/20'}`}>
               <AvatarImage src={currentPlayer.user.image || undefined} alt={currentPlayer.name} />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
+              <AvatarFallback className={`${isLowBalance ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'} font-semibold text-lg`}>
                 {currentPlayer.name.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>

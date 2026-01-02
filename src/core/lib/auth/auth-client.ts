@@ -9,7 +9,7 @@ export const authClient = createAuthClient({
       cancelOnTapOutside: true,
       context: "signin",
       promptOptions: {
-        baseDelay: 500,
+        baseDelay: 1500,
         maxAttempts: 5
       }
     })

@@ -35,10 +35,6 @@ export default async function TableroPage({ params }: { params: Promise<{ slug: 
 
   return (
     <main className='p-5 flex flex-col h-full'>
-      <header className="mb-4">
-        <h1 className="text-2xl font-bold">{tablero.tablero?.name}</h1>
-      </header>
-
       {isPlayer && tablero.creator ? (
         <TableroRealtimeWrapper
           tableroId={tablero.tablero?.id as string}

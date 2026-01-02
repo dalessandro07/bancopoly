@@ -79,8 +79,7 @@ export default function PlayersList ({
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">Jugadores</h2>
-        <p className="text-sm text-muted-foreground">Total de jugadores: {players.length}</p>
+        <h2 className="text-xl font-semibold">Jugadores ({players.length})</h2>
       </div>
 
       {players && players.length > 0 ? (

@@ -154,13 +154,19 @@ export function useTableroRealtime ({
     }
 
     if (payload.eventType === 'UPDATE') {
+      // Mantener la información del usuario existente al actualizar
+      const existingPlayer = currentPlayers.find(p => p.id === (payload.new as RawPlayer).id)
       const updatedPlayer = mapPlayer(payload.new as RawPlayer)
+      // Preservar la información del usuario si existe (para PlayerWithUser)
+      const playerWithUser = existingPlayer && 'user' in existingPlayer
+        ? { ...updatedPlayer, user: (existingPlayer as { user?: unknown }).user }
+        : updatedPlayer
       onPlayersChange(
-        currentPlayers.map(p => p.id === updatedPlayer.id ? updatedPlayer : p)
+        currentPlayers.map(p => p.id === playerWithUser.id ? playerWithUser : p) as TPlayer[]
       )
       // Notificar cambio de balance si es el jugador actual
-      if (updatedPlayer.id === currentPlayerId) {
-        onBalanceChange(updatedPlayer.id, updatedPlayer.balance)
+      if (playerWithUser.id === currentPlayerId) {
+        onBalanceChange(playerWithUser.id, playerWithUser.balance)
       }
     }
   }, [currentPlayerId, onPlayersChange, onBalanceChange, onCurrentPlayerRemoved])
