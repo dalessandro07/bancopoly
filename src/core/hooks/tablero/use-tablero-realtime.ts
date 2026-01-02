@@ -163,13 +163,13 @@ export function useTableroRealtime ({
       const playerWithUser = existingPlayer && 'user' in existingPlayer
         ? { ...updatedPlayer, user: (existingPlayer as { user?: unknown }).user }
         : updatedPlayer
-      onPlayersChange(
-        currentPlayers.map(p => p.id === playerWithUser.id ? playerWithUser : p) as TPlayer[]
-      )
-      // Notificar cambio de balance si es el jugador actual
-      if (playerWithUser.id === currentPlayerId) {
-        onBalanceChange(playerWithUser.id, playerWithUser.balance)
-      }
+
+      // Actualizar el estado de jugadores con el nuevo balance
+      const updatedPlayers = currentPlayers.map(p => p.id === playerWithUser.id ? playerWithUser : p) as TPlayer[]
+      onPlayersChange(updatedPlayers)
+
+      // Notificar cambio de balance para el jugador actualizado
+      onBalanceChange(playerWithUser.id, playerWithUser.balance)
     }
   }, [currentPlayerId, onPlayersChange, onBalanceChange, onCurrentPlayerRemoved])
 
