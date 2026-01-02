@@ -1,5 +1,5 @@
 import GoogleLogin from '@/src/core/components/auth/google-login'
-import LogoutBtn from '@/src/core/components/auth/logout-btn'
+import UserMenu from '@/src/core/components/auth/user-menu'
 import FormNewTablero from '@/src/core/components/tablero/form-new-tablero'
 import ListTablero from '@/src/core/components/tablero/list-tablero'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/core/components/ui/card'
@@ -62,13 +62,18 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
   // Si hay sesión, mostrar el dashboard normal
   return (
     <main className='p-5 flex flex-col md:flex-row gap-5 w-full h-full'>
-      <aside className='flex flex-col gap-5 justify-between md:w-1/4'>
-        <h1 className="text-4xl font-luckiest-guy">{APP_NAME}</h1>
-        {error && <p className='text-destructive'>{error}</p>}
-        <div>
-          <p className="text-muted-foreground mb-2">Bienvenido, <span className="font-semibold text-foreground">{session.user.name}</span></p>
-          <LogoutBtn />
+      <aside className='flex flex-col gap-5 md:w-1/4'>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-4xl font-luckiest-guy">{APP_NAME}</h1>
+          <div className="flex-shrink-0">
+            <UserMenu
+              name={session.user.name}
+              image={session.user.image}
+              email={session.user.email}
+            />
+          </div>
         </div>
+        {error && <p className='text-destructive'>{error}</p>}
       </aside>
 
       <section className='flex flex-col grow'>

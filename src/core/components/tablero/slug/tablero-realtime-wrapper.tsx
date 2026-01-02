@@ -94,6 +94,11 @@ export default function TableroRealtimeWrapper({
     router.push('/')
   }, [router])
 
+  // Cuando el tablero es cerrado
+  const handleTableroClosed = useCallback(() => {
+    router.push(`/tablero/${tableroId}/resultados`)
+  }, [router, tableroId])
+
   // Resetear contador cuando se abre la pestaña de historial
   const handleTabChange = useCallback((tab: TabType) => {
     setActiveTab(tab)
@@ -115,6 +120,7 @@ export default function TableroRealtimeWrapper({
     onBalanceChange: handleBalanceChange,
     onCurrentPlayerRemoved: handleCurrentPlayerRemoved,
     onTableroDeleted: handleTableroDeleted,
+    onTableroClosed: handleTableroClosed,
     players,
   })
 

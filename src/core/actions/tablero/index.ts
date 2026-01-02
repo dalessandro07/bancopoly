@@ -416,6 +416,155 @@ export async function actionLeaveTablero (tableroId: string) {
   }
 }
 
+export async function actionCloseTablero (tableroId: string) {
+  //* 1. Obtener la sesión del usuario
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+
+  if (!session?.user?.id) {
+    return { success: false, error: 'Usuario no autenticado' }
+  }
+
+  //* 2. Verificar que el usuario es el creador del tablero
+  const tableroData = await db.select().from(tablero).where(
+    and(
+      eq(tablero.id, tableroId),
+      eq(tablero.userId, session?.user?.id as string)
+    )
+  )
+
+  if (!tableroData[0]) {
+    return { success: false, error: 'No tienes permisos para cerrar este tablero' }
+  }
+
+  //* 3. Verificar que el tablero no esté ya cerrado
+  if (tableroData[0].isEnded) {
+    return { success: false, error: 'El tablero ya está cerrado' }
+  }
+
+  //* 4. Cerrar el tablero
+  try {
+    await db.update(tablero)
+      .set({ isEnded: true })
+      .where(eq(tablero.id, tableroId))
+
+    return { success: true, message: 'Tablero cerrado correctamente' }
+  } catch (error) {
+    console.error(error)
+    return { success: false, error: 'Error al cerrar el tablero' }
+  } finally {
+    revalidatePath(`/tablero/${tableroId}`)
+  }
+}
+
+export async function actionGetTableroStats (tableroId: string) {
+  //* 1. Obtener la sesión del usuario
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+
+  if (!session?.user?.id) {
+    return { success: false, error: 'Usuario no autenticado' }
+  }
+
+  try {
+    //* 2. Verificar que el tablero existe y está cerrado
+    const tableroData = await db.select().from(tablero).where(eq(tablero.id, tableroId))
+
+    if (!tableroData[0]) {
+      return { success: false, error: 'Tablero no encontrado' }
+    }
+
+    //* 3. Obtener todos los jugadores (excluyendo jugadores del sistema)
+    const allPlayers = await db
+      .select({
+        player: player,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        },
+      })
+      .from(player)
+      .leftJoin(user, eq(player.userId, user.id))
+      .where(
+        and(
+          eq(player.tableroId, tableroId),
+          eq(player.isSystemPlayer, false)
+        )
+      )
+
+    //* 4. Obtener todas las transacciones del tablero
+    const allTransactions = await db
+      .select()
+      .from(transaction)
+      .where(eq(transaction.tableroId, tableroId))
+      .orderBy(desc(transaction.createdAt))
+
+    //* 5. Calcular estadísticas por jugador
+    const playerStats = allPlayers.map(({ player, user }) => {
+      const initialBalance = 1500 // Balance inicial en Monopoly
+      const finalBalance = player.balance
+      const netChange = finalBalance - initialBalance
+
+      // Calcular transacciones enviadas y recibidas
+      const sentTransactions = allTransactions.filter(t => t.fromPlayerId === player.id)
+      const receivedTransactions = allTransactions.filter(t => t.toPlayerId === player.id)
+
+      const totalSent = sentTransactions.reduce((sum, t) => sum + t.amount, 0)
+      const totalReceived = receivedTransactions.reduce((sum, t) => sum + t.amount, 0)
+
+      return {
+        player: {
+          ...player,
+          user: user || null,
+        },
+        initialBalance,
+        finalBalance,
+        netChange,
+        totalSent,
+        totalReceived,
+        transactionCount: sentTransactions.length + receivedTransactions.length,
+      }
+    })
+
+    //* 6. Verificar que hay jugadores
+    if (playerStats.length === 0) {
+      return { success: false, error: 'No hay jugadores en este tablero' }
+    }
+
+    //* 7. Ordenar por balance final (ganador primero)
+    const ranking = [...playerStats].sort((a, b) => b.finalBalance - a.finalBalance)
+
+    //* 8. Encontrar ganador y perdedor
+    const winner = ranking[0]
+    const loser = ranking[ranking.length - 1]
+
+    //* 9. Calcular estadísticas generales
+    const totalTransactions = allTransactions.length
+    const totalMoneyInCirculation = allTransactions
+      .filter(t => t.type === 'transfer' || t.type === 'bank_give')
+      .reduce((sum, t) => sum + t.amount, 0)
+
+    return {
+      success: true,
+      data: {
+        ranking,
+        winner,
+        loser,
+        totalTransactions,
+        totalMoneyInCirculation,
+        playersCount: allPlayers.length,
+      },
+    }
+  } catch (error) {
+    console.error(error)
+    return { success: false, error: 'Error al obtener las estadísticas' }
+  }
+}
+
 //* TRANSACTIONS
 
 export async function actionCreateTransaction (initialState: unknown, formData: FormData) {

@@ -5,6 +5,7 @@ import TableroRealtimeWrapper from '@/src/core/components/tablero/slug/tablero-r
 import { auth } from '@/src/core/lib/auth'
 import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
 import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 
 type EnrichedTransaction = TTransaction & {
   fromPlayer?: TPlayer | null
@@ -19,6 +20,11 @@ export default async function TableroPage({ params }: { params: Promise<{ slug: 
   })
 
   const tablero = await actionGetTableroById(slug)
+
+  // Si el tablero está cerrado, redirigir a resultados
+  if (tablero.tablero?.isEnded) {
+    redirect(`/tablero/${slug}/resultados`)
+  }
 
   const isCreator = tablero.creator?.id === session?.user?.id
   const isPlayer = tablero.players?.some((player) => player.userId === session?.user?.id)

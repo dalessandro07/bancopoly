@@ -94,6 +94,7 @@ interface UseTableroRealtimeProps {
   onBalanceChange: (playerId: string, newBalance: number) => void
   onCurrentPlayerRemoved?: () => void
   onTableroDeleted?: () => void
+  onTableroClosed?: () => void
   players: TPlayer[]
 }
 
@@ -105,6 +106,7 @@ export function useTableroRealtime ({
   onBalanceChange,
   onCurrentPlayerRemoved,
   onTableroDeleted,
+  onTableroClosed,
   players,
 }: UseTableroRealtimeProps) {
   const supabase = createClient()
@@ -249,15 +251,28 @@ export function useTableroRealtime ({
     }
   }, [currentPlayerId, onTransactionsChange])
 
-  // Handler para cuando el tablero es eliminado
-  const handleTableroChange = useCallback((payload: RealtimePostgresChangesPayload<{ id: string }>) => {
+  // Handler para cuando el tablero es eliminado o cerrado
+  const handleTableroChange = useCallback((payload: RealtimePostgresChangesPayload<{ id: string; is_ended: boolean }>) => {
     if (payload.eventType === 'DELETE') {
       toast.error('El tablero ha sido eliminado', {
         position: 'top-center',
       })
       onTableroDeleted?.()
     }
-  }, [onTableroDeleted])
+
+    if (payload.eventType === 'UPDATE') {
+      const newData = payload.new as { is_ended: boolean }
+      const oldData = payload.old as { is_ended: boolean }
+
+      // Si el tablero fue cerrado (isEnded cambió de false a true)
+      if (!oldData.is_ended && newData.is_ended) {
+        toast.success('El tablero ha sido cerrado. Redirigiendo a resultados...', {
+          position: 'top-center',
+        })
+        onTableroClosed?.()
+      }
+    }
+  }, [onTableroDeleted, onTableroClosed])
 
   useEffect(() => {
     const channel = supabase
@@ -285,7 +300,7 @@ export function useTableroRealtime ({
       .on(
         'postgres_changes',
         {
-          event: 'DELETE',
+          event: '*',
           schema: 'public',
           table: 'tablero',
           filter: `id=eq.${tableroId}`,

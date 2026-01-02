@@ -1,5 +1,6 @@
 'use client'
 
+import CloseBtnTablero from '@/src/core/components/tablero/close-btn-tablero'
 import DeleteBtnTablero from '@/src/core/components/tablero/delete-btn-tablero'
 import LeaveBtnTablero from '@/src/core/components/tablero/leave-btn-tablero'
 import type { TPlayer, User } from '@/src/core/lib/db/schema'
@@ -94,6 +95,20 @@ export default function SettingsTab ({
           </div>
         </div>
       </section>
+
+      {isCreator && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold">Cerrar Sala</h2>
+          <div className="bg-card border rounded-lg p-4 space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Al cerrar la sala, el juego terminará y todos los jugadores podrán ver el ranking final y las estadísticas del juego.
+              </p>
+              <CloseBtnTablero tableroId={tableroId} />
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-destructive">Zona de peligro</h2>
