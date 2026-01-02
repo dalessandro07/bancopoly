@@ -95,11 +95,10 @@ export default function PlayersList ({
             {players.map((player) => (
               <CarouselItem key={player.id} className="pl-2 md:pl-4 basis-auto">
                 <div
-                  className={`border rounded-lg p-4 flex flex-col gap-2 bg-card min-w-[140px] max-w-[160px] relative select-none ${
-                    onPlayerClick && (isCreator || player.id !== currentPlayerId)
+                  className={`border rounded-lg p-4 flex flex-col gap-2 bg-card min-w-[140px] max-w-[160px] relative select-none ${onPlayerClick && (isCreator || player.id !== currentPlayerId)
                       ? 'cursor-pointer hover:border-primary hover:shadow-md transition-all active:scale-95'
                       : ''
-                  }`}
+                    }`}
                   onClick={(e) => handlePlayerClick(player.id, e)}
                 >
                   {isCreator && !player.isSystemPlayer && (

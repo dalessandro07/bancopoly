@@ -3,19 +3,8 @@
 import type { TPlayer, TTransaction } from '@/src/core/lib/db/schema'
 import { createClient } from '@/supabase/client'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-import confetti from 'canvas-confetti'
 import { useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
-
-// Función para mostrar confetti
-function showConfetti () {
-  confetti({
-    particleCount: 100,
-    spread: 70,
-    origin: { y: 0.6 },
-    colors: ['#22c55e', '#16a34a', '#15803d', '#fbbf24', '#f59e0b'],
-  })
-}
 
 type RealtimePayload<T extends Record<string, unknown>> = RealtimePostgresChangesPayload<T>
 
@@ -95,6 +84,7 @@ interface UseTableroRealtimeProps {
   onCurrentPlayerRemoved?: () => void
   onTableroDeleted?: () => void
   onTableroClosed?: () => void
+  onTransactionReceived?: (transaction: { amount: number; fromName: string; description?: string | null }) => void
   players: TPlayer[]
 }
 
@@ -107,6 +97,7 @@ export function useTableroRealtime ({
   onCurrentPlayerRemoved,
   onTableroDeleted,
   onTableroClosed,
+  onTransactionReceived,
   players,
 }: UseTableroRealtimeProps) {
   const supabase = createClient()
@@ -199,7 +190,7 @@ export function useTableroRealtime ({
 
       const involvesSystemPlayer = isFromBank || isToBank || isFromFreeParking || isToFreeParking
 
-      // Mostrar toast y confetti para el receptor
+      // Mostrar card animada y confetti para el receptor
       if (isReceiver) {
         const fromName = isFromBank
           ? 'Banco'
@@ -207,10 +198,18 @@ export function useTableroRealtime ({
             ? 'Parada Libre'
             : fromPlayer?.name || 'Desconocido'
 
+        // Mostrar card animada inmersiva
+        onTransactionReceived?.({
+          amount: newTransaction.amount,
+          fromName,
+          description: newTransaction.description,
+        })
+
+        // También mostrar toast pequeño (opcional, puede removerse)
         toast.success(`Recibiste $${newTransaction.amount.toLocaleString()} de ${fromName}`, {
           position: 'top-center',
+          duration: 2000,
         })
-        showConfetti()
       }
 
       // Mostrar toast para el enviador
@@ -249,7 +248,7 @@ export function useTableroRealtime ({
       // Pasar la nueva transacción para que el wrapper la enriquezca y agregue
       onTransactionsChange(newTransaction)
     }
-  }, [currentPlayerId, onTransactionsChange])
+  }, [currentPlayerId, onTransactionsChange, onTransactionReceived])
 
   // Handler para cuando el tablero es eliminado o cerrado
   const handleTableroChange = useCallback((payload: RealtimePostgresChangesPayload<{ id: string; is_ended: boolean }>) => {

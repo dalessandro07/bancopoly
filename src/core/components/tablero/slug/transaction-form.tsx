@@ -7,6 +7,7 @@ import { Label } from '@/src/core/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/src/core/components/ui/select'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/src/core/components/ui/sheet'
 import type { TPlayer } from '@/src/core/lib/db/schema'
+import { motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
@@ -79,7 +80,9 @@ export default function TransactionForm ({
 
   // Handler para botones de acceso rápido
   const handleQuickAmount = (quickAmount: number, quickDescription?: string) => {
-    setAmount(quickAmount.toString())
+    const currentAmount = parseFloat(amount) || 0
+    const newAmount = currentAmount + quickAmount
+    setAmount(newAmount.toString())
     if (quickDescription) {
       setDescription(quickDescription)
     }
@@ -160,8 +163,58 @@ export default function TransactionForm ({
           </SheetDescription>
         </SheetHeader>
 
-        <form key={formKey} ref={formRef} action={handleSubmit} className="flex flex-col gap-4 p-4">
+        <motion.form
+          key={formKey}
+          ref={formRef}
+          action={handleSubmit}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex flex-col gap-4 p-4"
+        >
           <input type="hidden" name="tableroId" value={tableroId} />
+
+          <div className="space-y-2">
+            <input
+              type="number"
+              id="amount"
+              name="amount"
+              min="1"
+              required
+              disabled={isPending}
+              placeholder="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full text-center text-4xl font-semibold bg-transparent border-0 outline-none shadow-none focus:outline-none focus:ring-0 focus:shadow-none disabled:opacity-50"
+            />
+            <div className="flex gap-2 flex-wrap mt-2">
+              {[5, 10, 20, 50, 100].map((quickAmount) => (
+                <Button
+                  key={quickAmount}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuickAmount(quickAmount)}
+                  disabled={isPending}
+                  className="flex-1 min-w-[60px]"
+                >
+                  ${quickAmount}
+                </Button>
+              ))}
+              {isFromBank && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuickAmount(200, 'Salida')}
+                  disabled={isPending}
+                  className="flex-1 min-w-[60px] bg-primary/10 border-primary/20"
+                >
+                  $200
+                </Button>
+              )}
+            </div>
+          </div>
 
           {isCreator ? (
             <div className="space-y-2">
@@ -218,48 +271,6 @@ export default function TransactionForm ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="amount">Monto:</Label>
-            <Input
-              type="number"
-              id="amount"
-              name="amount"
-              min="1"
-              required
-              disabled={isPending}
-              placeholder="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-            <div className="flex gap-2 flex-wrap mt-2">
-              {[5, 10, 20, 50, 100].map((quickAmount) => (
-                <Button
-                  key={quickAmount}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickAmount(quickAmount)}
-                  disabled={isPending}
-                  className="flex-1 min-w-[60px]"
-                >
-                  ${quickAmount}
-                </Button>
-              ))}
-              {isFromBank && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickAmount(200, 'Salida')}
-                  disabled={isPending}
-                  className="flex-1 min-w-[60px] bg-primary/10 border-primary/20"
-                >
-                  $200
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="description">Descripción (opcional):</Label>
             <Input
               type="text"
@@ -280,7 +291,7 @@ export default function TransactionForm ({
           >
             {isPending ? 'Procesando...' : 'Transferir'}
           </Button>
-        </form>
+        </motion.form>
       </SheetContent>
     </Sheet>
   )

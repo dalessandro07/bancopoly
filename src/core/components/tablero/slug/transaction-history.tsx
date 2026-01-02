@@ -6,6 +6,7 @@ import { ScrollArea } from '@/src/core/components/ui/scroll-area'
 import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
 import { ArrowRightIcon, BanknoteIcon, FilterIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 type PlayerWithUser = TPlayer & {
   user?: User | null
@@ -185,15 +186,21 @@ export default function TransactionHistory({
 
       <ScrollArea className="flex-1">
         <div className="space-y-2 px-5 pb-24">
-          {transactions.map((transaction) => {
+          <AnimatePresence>
+            {transactions.map((transaction, index) => {
             const isSender = isCurrentPlayer(transaction.fromPlayerId)
             const isReceiver = isCurrentPlayer(transaction.toPlayerId)
 
             const fromPlayer = transaction.fromPlayer
             const toPlayer = transaction.toPlayer
 
+            // Función para obtener solo el primer nombre en mobile
+            const getFirstName = (name: string) => {
+              return name.split(' ')[0]
+            }
+
             // Determinar nombres para mostrar
-            const fromName = fromPlayer?.isSystemPlayer
+            const fromNameFull = fromPlayer?.isSystemPlayer
               ? fromPlayer.systemPlayerType === 'bank'
                 ? 'Banco'
                 : fromPlayer.systemPlayerType === 'free_parking'
@@ -201,7 +208,7 @@ export default function TransactionHistory({
                 : fromPlayer.name
               : fromPlayer?.name || 'Desconocido'
 
-            const toName = toPlayer?.isSystemPlayer
+            const toNameFull = toPlayer?.isSystemPlayer
               ? toPlayer.systemPlayerType === 'bank'
                 ? 'Banco'
                 : toPlayer.systemPlayerType === 'free_parking'
@@ -209,9 +216,26 @@ export default function TransactionHistory({
                 : toPlayer.name
               : toPlayer?.name || 'Desconocido'
 
+            const fromName = getFirstName(fromNameFull)
+            const toName = getFirstName(toNameFull)
+
             return (
-              <div
+              <motion.div
                 key={transaction.id}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -20, scale: 0.95 }}
+                transition={{
+                  duration: 0.3,
+                  delay: index * 0.05,
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 20
+                }}
+                whileHover={{
+                  scale: 1.02,
+                  transition: { duration: 0.2 }
+                }}
                 className="p-4 rounded-xl border bg-card"
               >
                 {/* Monto y Fecha */}
@@ -234,19 +258,20 @@ export default function TransactionHistory({
                       isSender ? 'border-destructive' : 'border-muted'
                     }`}>
                       {fromPlayer?.user?.image ? (
-                        <AvatarImage src={fromPlayer.user.image} alt={fromName} />
+                        <AvatarImage src={fromPlayer.user.image} alt={fromNameFull} />
                       ) : null}
                       <AvatarFallback className={`text-xs ${
                         isSender ? 'bg-destructive/10 text-destructive' : 'bg-muted'
                       }`}>
-                        {fromName.charAt(0).toUpperCase()}
+                        {fromNameFull.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${
                         isSender ? 'text-destructive' : 'text-muted-foreground'
                       }`}>
-                        {fromName}
+                        <span className="md:hidden">{fromName}</span>
+                        <span className="hidden md:inline">{fromNameFull}</span>
                       </p>
                     </div>
                   </div>
@@ -262,19 +287,20 @@ export default function TransactionHistory({
                       <p className={`text-sm font-medium truncate ${
                         isReceiver ? 'text-green-500' : 'text-muted-foreground'
                       }`}>
-                        {toName}
+                        <span className="md:hidden">{toName}</span>
+                        <span className="hidden md:inline">{toNameFull}</span>
                       </p>
                     </div>
                     <Avatar className={`size-8 border-2 ${
                       isReceiver ? 'border-green-500' : 'border-muted'
                     }`}>
                       {toPlayer?.user?.image ? (
-                        <AvatarImage src={toPlayer.user.image} alt={toName} />
+                        <AvatarImage src={toPlayer.user.image} alt={toNameFull} />
                       ) : null}
                       <AvatarFallback className={`text-xs ${
                         isReceiver ? 'bg-green-500/10 text-green-500' : 'bg-muted'
                       }`}>
-                        {toName.charAt(0).toUpperCase()}
+                        {toNameFull.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </div>
@@ -286,9 +312,10 @@ export default function TransactionHistory({
                     {transaction.description}
                   </p>
                 )}
-              </div>
+              </motion.div>
             )
           })}
+          </AnimatePresence>
         </div>
       </ScrollArea>
     </div>

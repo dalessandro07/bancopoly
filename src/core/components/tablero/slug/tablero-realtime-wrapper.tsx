@@ -11,6 +11,7 @@ import PlayersList from './players-list'
 import SettingsTab from './settings-tab'
 import TransactionForm from './transaction-form'
 import TransactionHistory from './transaction-history'
+import TransactionReceivedCard from './transaction-received-card'
 
 type PlayerWithUser = TPlayer & {
   user?: User | null
@@ -48,6 +49,12 @@ export default function TableroRealtimeWrapper({
   const [unreadTransactions, setUnreadTransactions] = useState(0)
   // Estado para controlar el jugador preseleccionado en el formulario
   const [preselectedToPlayerId, setPreselectedToPlayerId] = useState<string | undefined>(undefined)
+  // Estado para la card de transacción recibida
+  const [receivedTransaction, setReceivedTransaction] = useState<{
+    amount: number
+    fromName: string
+    description?: string | null
+  } | null>(null)
   const playersRef = useRef(players)
 
   // Mantener ref actualizado
@@ -112,6 +119,15 @@ export default function TableroRealtimeWrapper({
     setPreselectedToPlayerId(playerId)
   }, [])
 
+  // Handler para cuando se recibe una transacción
+  const handleTransactionReceived = useCallback((transaction: {
+    amount: number
+    fromName: string
+    description?: string | null
+  }) => {
+    setReceivedTransaction(transaction)
+  }, [])
+
   useTableroRealtime({
     tableroId,
     currentPlayerId,
@@ -121,6 +137,7 @@ export default function TableroRealtimeWrapper({
     onCurrentPlayerRemoved: handleCurrentPlayerRemoved,
     onTableroDeleted: handleTableroDeleted,
     onTableroClosed: handleTableroClosed,
+    onTransactionReceived: handleTransactionReceived,
     players,
   })
 
@@ -145,6 +162,16 @@ export default function TableroRealtimeWrapper({
 
   return (
     <div className="flex flex-col h-full pb-20">
+      {/* Card animada de transacción recibida */}
+      {receivedTransaction && (
+        <TransactionReceivedCard
+          amount={receivedTransaction.amount}
+          fromName={receivedTransaction.fromName}
+          description={receivedTransaction.description}
+          onClose={() => setReceivedTransaction(null)}
+        />
+      )}
+
       {activeTab === 'inicio' && (
         <div className="flex flex-col gap-6 pb-24">
           <CurrentPlayerBalance
