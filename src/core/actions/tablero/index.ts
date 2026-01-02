@@ -3,7 +3,7 @@
 import { auth } from '@/src/core/lib/auth'
 import { db } from '@/src/core/lib/db'
 import { player, tablero, user, type TTablero } from '@/src/core/lib/db/schema'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, or } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -21,7 +21,26 @@ export async function actionGetTablerosFromUser () {
   }
 
   try {
-    const tableros = await db.select().from(tablero).where(eq(tablero.userId, session?.user?.id as string))
+    // Obtener tableros donde el usuario es creador o es jugador
+    const tableros = await db
+      .selectDistinct({
+        id: tablero.id,
+        name: tablero.name,
+        userId: tablero.userId,
+        freeParkingEnabled: tablero.freeParkingEnabled,
+        isClosed: tablero.isClosed,
+        isEnded: tablero.isEnded,
+        createdAt: tablero.createdAt,
+        updatedAt: tablero.updatedAt,
+      })
+      .from(tablero)
+      .leftJoin(player, eq(player.tableroId, tablero.id))
+      .where(
+        or(
+          eq(tablero.userId, session?.user?.id as string),
+          eq(player.userId, session?.user?.id as string)
+        )
+      )
 
     return { success: true, data: tableros }
   } catch (error) {
@@ -162,6 +181,84 @@ export async function actionDeleteTablero (slug: string) {
     return { success: false, error: 'Error al eliminar el tablero' }
   }
   finally {
-    revalidatePath('/')
+    redirect('/')
+  }
+}
+
+export async function actionDeletePlayer (playerId: string, tableroId: string) {
+  //* 1. Obtener la sesión del usuario
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+
+  if (!session?.user?.id) {
+    return { success: false, error: 'Usuario no autenticado' }
+  }
+
+  //* 2. Verificar que el usuario es el creador del tablero
+  const tableroData = await db.select().from(tablero).where(and(eq(tablero.id, tableroId), eq(tablero.userId, session?.user?.id as string)))
+
+  if (!tableroData[0]) {
+    return { success: false, error: 'No tienes permisos para eliminar jugadores de este tablero' }
+  }
+
+  //* 3. Verificar que el jugador existe y pertenece al tablero
+  const playerData = await db.select().from(player).where(and(eq(player.id, playerId), eq(player.tableroId, tableroId)))
+
+  if (!playerData[0]) {
+    return { success: false, error: 'Jugador no encontrado' }
+  }
+
+  //* 4. Eliminar el jugador
+  try {
+    await db.delete(player).where(eq(player.id, playerId))
+    return { success: true, message: 'Jugador eliminado correctamente' }
+  } catch (error) {
+    console.error(error)
+    return { success: false, error: 'Error al eliminar el jugador' }
+  } finally {
+    revalidatePath(`/tablero/${tableroId}`)
+  }
+}
+
+export async function actionLeaveTablero (tableroId: string) {
+  //* 1. Obtener la sesión del usuario
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+
+  if (!session?.user?.id) {
+    return { success: false, error: 'Usuario no autenticado' }
+  }
+
+  //* 2. Verificar que el usuario es jugador del tablero (no creador)
+  const tableroData = await db.select().from(tablero).where(eq(tablero.id, tableroId))
+
+  if (!tableroData[0]) {
+    return { success: false, error: 'Tablero no encontrado' }
+  }
+
+  //* 3. Verificar que el usuario no es el creador
+  if (tableroData[0].userId === session?.user?.id) {
+    return { success: false, error: 'El creador del tablero no puede salir de la sala' }
+  }
+
+  //* 4. Buscar el jugador del usuario en este tablero
+  const playerData = await db.select().from(player).where(and(eq(player.tableroId, tableroId), eq(player.userId, session?.user?.id as string)))
+
+  if (!playerData[0]) {
+    return { success: false, error: 'No estás unido a este tablero' }
+  }
+
+  //* 5. Eliminar el jugador
+  try {
+    await db.delete(player).where(eq(player.id, playerData[0].id))
+    return { success: true, message: 'Has salido del tablero' }
+  } catch (error) {
+    console.error(error)
+    return { success: false, error: 'Error al salir del tablero' }
+  } finally {
+    revalidatePath(`/tablero/${tableroId}`)
+    redirect('/')
   }
 }

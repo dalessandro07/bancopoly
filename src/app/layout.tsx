@@ -28,7 +28,9 @@ export default function RootLayout ({
       <body
         className={`${luckiestGuy.variable} antialiased dark`}
       >
-        {children}
+        <div className='h-dvh'>
+          {children}
+        </div>
         <Toaster />
       </body>
     </html>

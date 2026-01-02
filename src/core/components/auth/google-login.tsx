@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import { toast } from "sonner"
 import { Button } from "../ui/button"
 
-export default function GoogleLogin ({ redirectTo }: { redirectTo: string }) {
+export default function GoogleLogin ({ redirectTo = '/' }: { redirectTo?: string }) {
   const handleSignIn = async () => {
     try {
       await signInSocial("google", redirectTo)

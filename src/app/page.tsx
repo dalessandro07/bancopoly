@@ -15,26 +15,29 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
   })
 
   return (
-    <main className='p-5'>
-      <header>
+    <main className='p-5 flex flex-col md:flex-row gap-5 w-full h-full'>
+      <aside className='flex flex-col gap-5 justify-between md:w-1/4'>
         <h1 className="text-4xl font-luckiest-guy">{APP_NAME}</h1>
         {error && <p className='text-destructive'>{error}</p>}
-      </header>
+        {session && session.user ? (
+          <div>
+            <p>Bienvenido {session.user.name}</p>
+            <LogoutBtn />
+          </div>
+        ) : (
+          <GoogleLogin />
+        )}
+      </aside>
 
-      <section>
+      <section className='flex flex-col grow'>
         {
-          session && session.user ? (
+          session && session.user && (
             <div>
-              <p>Bienvenido {session.user.name}</p>
-              <LogoutBtn />
-
               <FormNewTablero />
               <Suspense fallback={<div>Cargando tableros...</div>}>
                 <ListTablero />
               </Suspense>
             </div>
-          ) : (
-            <GoogleLogin />
           )
         }
       </section>
