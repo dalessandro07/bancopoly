@@ -1,10 +1,14 @@
 'use client'
 
-import type { TPlayer, TTransaction } from '@/src/core/lib/db/schema'
+import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
 import { createClient } from '@/supabase/client'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
+
+type PlayerWithUser = TPlayer & {
+  user?: User | null
+}
 
 type RealtimePayload<T extends Record<string, unknown>> = RealtimePostgresChangesPayload<T>
 
@@ -150,17 +154,41 @@ export function useTableroRealtime ({
       // Mantener la información del usuario existente al actualizar
       const existingPlayer = currentPlayers.find(p => p.id === (payload.new as RawPlayer).id)
       const updatedPlayer = mapPlayer(payload.new as RawPlayer)
+
       // Preservar la información del usuario si existe (para PlayerWithUser)
-      const playerWithUser = existingPlayer && 'user' in existingPlayer
-        ? { ...updatedPlayer, user: (existingPlayer as { user?: unknown }).user }
-        : updatedPlayer
+      // Necesitamos verificar si el jugador existente tiene la propiedad 'user'
+      let playerWithUser: TPlayer | PlayerWithUser = updatedPlayer
+      if (existingPlayer && 'user' in existingPlayer) {
+        playerWithUser = {
+          ...updatedPlayer,
+          user: (existingPlayer as PlayerWithUser).user
+        }
+      }
 
       // Actualizar el estado de jugadores con el nuevo balance
-      const updatedPlayers = currentPlayers.map(p => p.id === playerWithUser.id ? playerWithUser : p) as TPlayer[]
+      // Crear un nuevo array y nuevos objetos para asegurar que React detecte el cambio
+      const updatedPlayers = currentPlayers.map(p => {
+        if (p.id === playerWithUser.id) {
+          // Crear un nuevo objeto para el jugador actualizado
+          // Esto asegura que React detecte el cambio
+          return { ...playerWithUser }
+        }
+        // Mantener los demás jugadores como están
+        return p
+      })
+
+      // Verificar si hay un cambio en el balance
+      const existingBalance = existingPlayer?.balance
+      const newBalance = playerWithUser.balance
+      const balanceChanged = existingBalance !== newBalance
+
+      // Siempre actualizar el estado para reflejar cualquier cambio en el jugador
       onPlayersChange(updatedPlayers)
 
-      // Notificar cambio de balance para el jugador actualizado
-      onBalanceChange(playerWithUser.id, playerWithUser.balance)
+      // Notificar cambio de balance solo si realmente cambió
+      if (balanceChanged) {
+        onBalanceChange(playerWithUser.id, playerWithUser.balance)
+      }
     }
   }, [currentPlayerId, onPlayersChange, onBalanceChange, onCurrentPlayerRemoved])
 

@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/src/core/components/ui/av
 import type { TPlayer, User } from '@/src/core/lib/db/schema'
 import { AnimatePresence, motion } from 'framer-motion'
 import { WalletIcon } from 'lucide-react'
-import { startTransition, useEffect, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 
 type PlayerWithUser = TPlayer & {
   user?: User | null
@@ -35,7 +35,14 @@ function useBalanceChange (currentBalance: number | null) {
     if (!isInitializedRef.current) {
       isInitializedRef.current = true
       previousBalanceRef.current = currentBalance
-      // El estado ya está inicializado correctamente, no necesitamos actualizarlo
+      // Actualizar el estado inicial
+      startTransition(() => {
+        setState({
+          changed: false,
+          isIncrease: false,
+          previousBalance: currentBalance,
+        })
+      })
       return
     }
 
@@ -43,6 +50,10 @@ function useBalanceChange (currentBalance: number | null) {
     if (previousBalanceRef.current !== null && previousBalanceRef.current !== currentBalance) {
       const isIncrease = currentBalance > previousBalanceRef.current
       const previousBalance = previousBalanceRef.current
+
+      // Actualizar el ref después de detectar el cambio, pero antes de activar la animación
+      // para evitar detectar el mismo cambio múltiples veces
+      previousBalanceRef.current = currentBalance
 
       // Usar startTransition para marcar el cambio
       startTransition(() => {
@@ -60,7 +71,6 @@ function useBalanceChange (currentBalance: number | null) {
 
       // Actualizar después de un delay para que la animación se muestre
       timeoutRef.current = setTimeout(() => {
-        previousBalanceRef.current = currentBalance
         startTransition(() => {
           setState({
             changed: false,
@@ -70,12 +80,16 @@ function useBalanceChange (currentBalance: number | null) {
         })
         timeoutRef.current = null
       }, 2000)
+    } else if (previousBalanceRef.current !== currentBalance) {
+      // Si el balance cambió pero no se detectó antes (por ejemplo, si se actualizó directamente)
+      // Actualizar el ref para mantener la sincronización
+      previousBalanceRef.current = currentBalance
+    }
 
-      return () => {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current)
-          timeoutRef.current = null
-        }
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
       }
     }
   }, [currentBalance])
@@ -109,7 +123,11 @@ export default function CurrentPlayerBalance ({
   players: PlayerWithUser[]
   currentPlayerId?: string
 }) {
-  const currentPlayer = players.find(p => p.id === currentPlayerId)
+  // Usar useMemo para asegurar que se actualice cuando cambia el array de jugadores
+  const currentPlayer = useMemo(
+    () => players.find(p => p.id === currentPlayerId),
+    [players, currentPlayerId]
+  )
   const currentBalance = currentPlayer?.balance ?? null
   const balanceChange = useBalanceChange(currentBalance)
 
