@@ -39,6 +39,8 @@ export function formatPlayerForRealtime (player: TPlayer) {
  * Convierte una transacción de la base de datos al formato para eventos de realtime
  */
 export function formatTransactionForRealtime (transaction: TTransaction) {
+  // Si createdAt es 0 o inválido, usar la fecha actual
+  const timestamp = transaction.createdAt > 0 ? transaction.createdAt : Date.now()
   return {
     id: transaction.id,
     tableroId: transaction.tableroId,
@@ -47,7 +49,7 @@ export function formatTransactionForRealtime (transaction: TTransaction) {
     amount: transaction.amount,
     type: transaction.type,
     description: transaction.description,
-    createdAt: new Date(transaction.createdAt).toISOString(),
+    createdAt: new Date(timestamp).toISOString(),
   }
 }
 

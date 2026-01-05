@@ -32,8 +32,8 @@ function mapPlayerFromRealtime (
     balance: data.balance,
     isSystemPlayer: data.isSystemPlayer ? 1 : 0,
     systemPlayerType: data.systemPlayerType,
-    createdAt: parseInt(data.createdAt),
-    updatedAt: parseInt(data.updatedAt),
+    createdAt: Date.parse(data.createdAt),
+    updatedAt: Date.parse(data.updatedAt),
     user: existingUser,
   }
 }

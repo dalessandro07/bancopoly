@@ -96,6 +96,7 @@ export async function actionCreateTransaction (initialState: unknown, formData: 
       amount,
       type: 'transfer',
       description: description || null,
+      createdAt: Date.now(),
     }).returning()
 
     // Emitir eventos de realtime

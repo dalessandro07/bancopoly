@@ -30,8 +30,14 @@ export default function TransactionHistory ({
 }) {
   const [filter, setFilter] = useState<FilterType>('all')
 
-  const formatDate = (date: Date | string) => {
-    const d = new Date(date)
+  const formatDate = (date: Date | string | number) => {
+    // Si es un número, asumimos que es un timestamp Unix en milisegundos
+    const timestamp = typeof date === 'number' ? date : typeof date === 'string' ? Date.parse(date) || parseInt(date) : date.getTime()
+    const d = new Date(timestamp)
+    // Validar que la fecha sea válida
+    if (isNaN(d.getTime())) {
+      return 'Fecha inválida'
+    }
     return d.toLocaleString('es-ES', {
       day: '2-digit',
       month: 'short',
@@ -245,7 +251,7 @@ export default function TransactionHistory ({
                       {isSender ? '-' : isReceiver ? '+' : ''}${transaction.amount.toLocaleString()}
                     </span>
                     <div className="text-xs font-medium text-muted-foreground">
-                      {formatDate(transaction.createdAt.toString())}
+                      {formatDate(transaction.createdAt)}
                     </div>
                   </div>
 
