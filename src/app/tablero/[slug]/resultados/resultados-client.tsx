@@ -1,6 +1,7 @@
 'use client'
 
 import { GameStatsCard } from '@/src/core/components/tablero/resultados/game-stats-card'
+import { LargestTransferCard } from '@/src/core/components/tablero/resultados/largest-transfer-card'
 import { RankingCard } from '@/src/core/components/tablero/resultados/ranking-card'
 import { ResultadosActions } from '@/src/core/components/tablero/resultados/resultados-actions'
 import { StatsCards } from '@/src/core/components/tablero/resultados/stats-cards'
@@ -40,6 +41,8 @@ export default function ResultadosClient ({
       <RankingCard ranking={stats.ranking} currentUserId={currentUserId} />
 
       <StatsCards winner={stats.winner} loser={stats.loser} />
+
+      <LargestTransferCard largestTransfer={stats.largestTransfer} />
 
       <GameStatsCard
         totalTransactions={stats.totalTransactions}

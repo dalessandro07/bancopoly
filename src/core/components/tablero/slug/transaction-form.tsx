@@ -7,7 +7,6 @@ import { Label } from '@/src/core/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/src/core/components/ui/select'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/src/core/components/ui/sheet'
 import type { TPlayer } from '@/src/core/lib/db/schema'
-import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -167,14 +166,11 @@ export default function TransactionForm ({
           </SheetDescription>
         </SheetHeader>
 
-        <motion.form
+        <form
           key={formKey}
           ref={formRef}
           action={handleSubmit}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex flex-col gap-4 p-4"
+          className="flex flex-col gap-4 p-4 animate-in fade-in slide-in-from-bottom-4 duration-300"
         >
           <input type="hidden" name="tableroId" value={tableroId} />
 
@@ -295,7 +291,7 @@ export default function TransactionForm ({
           >
             {isPending ? 'Procesando...' : 'Transferir'}
           </Button>
-        </motion.form>
+        </form>
       </SheetContent>
     </Sheet>
   )

@@ -1,11 +1,22 @@
 import { actionGetPlayerTransactions, actionGetTableroById } from '@/src/core/actions/tablero'
-import FormJoinTablero from '@/src/core/components/tablero/form-join-tablero'
-import PlayersList from '@/src/core/components/tablero/slug/players-list'
-import TableroRealtimeWrapper from '@/src/core/components/tablero/slug/tablero-realtime-wrapper'
 import { auth } from '@/src/core/lib/auth'
 import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import dynamic from 'next/dynamic'
+
+// Lazy load components que no son críticos para la carga inicial
+const FormJoinTablero = dynamic(() => import('@/src/core/components/tablero/form-join-tablero'), {
+  loading: () => <div className="flex items-center justify-center flex-1 py-8"><div className="animate-pulse text-muted-foreground">Cargando...</div></div>
+})
+
+const PlayersList = dynamic(() => import('@/src/core/components/tablero/slug/players-list'), {
+  loading: () => <div className="space-y-4"><div className="h-8 w-32 bg-muted animate-pulse rounded" /><div className="h-32 bg-muted animate-pulse rounded-lg" /></div>
+})
+
+const TableroRealtimeWrapper = dynamic(() => import('@/src/core/components/tablero/slug/tablero-realtime-wrapper'), {
+  loading: () => <div className="flex items-center justify-center flex-1"><div className="animate-pulse text-muted-foreground">Cargando tablero...</div></div>
+})
 
 type EnrichedTransaction = TTransaction & {
   fromPlayer?: TPlayer | null

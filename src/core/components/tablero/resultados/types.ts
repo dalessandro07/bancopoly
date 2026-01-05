@@ -18,6 +18,31 @@ export interface PlayerStats {
   transactionCount: number
 }
 
+export interface LargestTransfer {
+  amount: number
+  description: string | null
+  fromPlayer: {
+    id: string
+    name: string
+    user: {
+      id: string
+      name: string
+      email: string
+      image: string | null
+    } | null
+  }
+  toPlayer: {
+    id: string
+    name: string
+    user: {
+      id: string
+      name: string
+      email: string
+      image: string | null
+    } | null
+  } | null
+}
+
 export interface TableroStats {
   ranking: PlayerStats[]
   winner: PlayerStats
@@ -25,4 +50,5 @@ export interface TableroStats {
   totalTransactions: number
   totalMoneyInCirculation: number
   playersCount: number
+  largestTransfer: LargestTransfer | null
 }

@@ -4,7 +4,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/src/core/components/ui/av
 import { Button } from '@/src/core/components/ui/button'
 import { ScrollArea } from '@/src/core/components/ui/scroll-area'
 import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
-import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRightIcon, BanknoteIcon, FilterIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
@@ -192,58 +191,43 @@ export default function TransactionHistory ({
 
       <ScrollArea className="flex-1">
         <div className="space-y-2 px-5 pb-24">
-          <AnimatePresence>
-            {transactions.map((transaction, index) => {
-              const isSender = isCurrentPlayer(transaction.fromPlayerId)
-              const isReceiver = isCurrentPlayer(transaction.toPlayerId)
+          {transactions.map((transaction) => {
+            const isSender = isCurrentPlayer(transaction.fromPlayerId)
+            const isReceiver = isCurrentPlayer(transaction.toPlayerId)
 
-              const fromPlayer = transaction.fromPlayer
-              const toPlayer = transaction.toPlayer
+            const fromPlayer = transaction.fromPlayer
+            const toPlayer = transaction.toPlayer
 
-              // Función para obtener solo el primer nombre en mobile
-              const getFirstName = (name: string) => {
-                return name.split(' ')[0]
-              }
+            // Función para obtener solo el primer nombre en mobile
+            const getFirstName = (name: string) => {
+              return name.split(' ')[0]
+            }
 
-              // Determinar nombres para mostrar
-              const fromNameFull = fromPlayer?.isSystemPlayer
-                ? fromPlayer.systemPlayerType === 'bank'
-                  ? 'Banco'
-                  : fromPlayer.systemPlayerType === 'free_parking'
-                    ? 'Parada Libre'
-                    : fromPlayer.name
-                : fromPlayer?.name || 'Desconocido'
+            // Determinar nombres para mostrar
+            const fromNameFull = fromPlayer?.isSystemPlayer
+              ? fromPlayer.systemPlayerType === 'bank'
+                ? 'Banco'
+                : fromPlayer.systemPlayerType === 'free_parking'
+                  ? 'Parada Libre'
+                  : fromPlayer.name
+              : fromPlayer?.name || 'Desconocido'
 
-              const toNameFull = toPlayer?.isSystemPlayer
-                ? toPlayer.systemPlayerType === 'bank'
-                  ? 'Banco'
-                  : toPlayer.systemPlayerType === 'free_parking'
-                    ? 'Parada Libre'
-                    : toPlayer.name
-                : toPlayer?.name || 'Desconocido'
+            const toNameFull = toPlayer?.isSystemPlayer
+              ? toPlayer.systemPlayerType === 'bank'
+                ? 'Banco'
+                : toPlayer.systemPlayerType === 'free_parking'
+                  ? 'Parada Libre'
+                  : toPlayer.name
+              : toPlayer?.name || 'Desconocido'
 
-              const fromName = getFirstName(fromNameFull)
-              const toName = getFirstName(toNameFull)
+            const fromName = getFirstName(fromNameFull)
+            const toName = getFirstName(toNameFull)
 
-              return (
-                <motion.div
-                  key={transaction.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -20, scale: 0.95 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: index * 0.05,
-                    type: "spring",
-                    stiffness: 200,
-                    damping: 20
-                  }}
-                  whileHover={{
-                    scale: 1.02,
-                    transition: { duration: 0.2 }
-                  }}
-                  className="p-4 rounded-xl border bg-card"
-                >
+            return (
+              <div
+                key={transaction.id}
+                className="p-4 rounded-xl border bg-card transition-all hover:shadow-md"
+              >
                   {/* Monto y Fecha */}
                   <div className="flex items-start justify-between mb-3">
                     <span className={`text-3xl font-bold ${isSender ? 'text-destructive' : isReceiver ? 'text-green-500' : 'text-foreground'
@@ -310,10 +294,9 @@ export default function TransactionHistory ({
                       {transaction.description}
                     </p>
                   )}
-                </motion.div>
+                </div>
               )
             })}
-          </AnimatePresence>
         </div>
       </ScrollArea>
     </div>

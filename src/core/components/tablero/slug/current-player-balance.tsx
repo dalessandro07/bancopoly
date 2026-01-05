@@ -2,7 +2,6 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/src/core/components/ui/avatar'
 import type { TPlayer, User } from '@/src/core/lib/db/schema'
-import { AnimatePresence, motion } from 'framer-motion'
 import { WalletIcon } from 'lucide-react'
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -141,77 +140,55 @@ export default function CurrentPlayerBalance ({
     : 0
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={`relative overflow-hidden rounded-2xl ${styles.cardBgClass} p-6 shadow-lg`}
+    <section
+      className={`relative overflow-hidden rounded-2xl ${styles.cardBgClass} p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300`}
     >
-      <motion.div
+      <div
         key={currentPlayer.balance}
-        initial={balanceChange.changed ? { scale: 1.1 } : false}
-        animate={{ scale: 1 }}
-        transition={{ duration: 0.3, type: "spring" }}
-        className="relative z-10 space-y-4"
+        className={`relative z-10 space-y-4 transition-transform ${balanceChange.changed ? 'scale-105' : 'scale-100'}`}
+        style={{ transitionDuration: '300ms' }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <motion.div
-              animate={balanceChange.changed ? { rotate: [0, -10, 10, -10, 0] } : {}}
-              transition={{ duration: 0.5 }}
-              className={`p-3 rounded-full ${styles.iconBgClass}`}
+            <div
+              className={`p-3 rounded-full ${styles.iconBgClass} transition-transform ${balanceChange.changed ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}
             >
               <WalletIcon className={`size-6 ${styles.iconColor}`} />
-            </motion.div>
+            </div>
             <div>
               <h2 className="text-sm font-medium text-muted-foreground">Tu saldo</h2>
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={currentPlayer.balance}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  transition={{ duration: 0.2 }}
-                  className={`text-4xl font-bold ${styles.balanceColor} transition-colors`}
+              <p
+                key={currentPlayer.balance}
+                className={`text-4xl font-bold ${styles.balanceColor} transition-all duration-200 animate-in fade-in slide-in-from-top-2`}
+              >
+                ${currentPlayer.balance.toLocaleString()}
+              </p>
+              {balanceChange.changed && (
+                <div
+                  key={`change-${currentPlayer.balance}-${changeAmount}`}
+                  className={`text-xs font-semibold mt-1 animate-in fade-in slide-in-from-top-1 duration-300 ${balanceChange.isIncrease ? 'text-green-500' : 'text-destructive'}`}
                 >
-                  ${currentPlayer.balance.toLocaleString()}
-                </motion.p>
-              </AnimatePresence>
-              <AnimatePresence mode="wait">
-                {balanceChange.changed && (
-                  <motion.div
-                    key={`change-${currentPlayer.balance}-${changeAmount}`}
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 5 }}
-                    transition={{ duration: 0.3 }}
-                    className={`text-xs font-semibold mt-1 ${balanceChange.isIncrease ? 'text-green-500' : 'text-destructive'}`}
-                  >
-                    {balanceChange.isIncrease ? '↑' : '↓'} ${changeAmount.toLocaleString()}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  {balanceChange.isIncrease ? '↑' : '↓'} ${changeAmount.toLocaleString()}
+                </div>
+              )}
             </div>
           </div>
           {currentPlayer.user && (
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
+            <div className="transition-transform hover:scale-105 active:scale-95">
               <Avatar className={`size-12 border-2 ${styles.avatarBorderClass}`}>
                 <AvatarImage src={currentPlayer.user.image || undefined} alt={currentPlayer.name} />
                 <AvatarFallback className={`${styles.avatarBgClass} font-semibold text-lg`}>
                   {currentPlayer.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-            </motion.div>
+            </div>
           )}
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="font-medium">{currentPlayer.name}</span>
         </div>
-      </motion.div>
+      </div>
       <div className="absolute inset-0 bg-grid-pattern opacity-5" />
-    </motion.section>
+    </section>
   )
 }

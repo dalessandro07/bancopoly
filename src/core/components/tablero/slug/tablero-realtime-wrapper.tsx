@@ -4,14 +4,31 @@ import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
 import { useTableroRealtime } from '@/src/core/hooks/tablero/use-tablero-realtime'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import BottomNavigation, { type TabType } from './bottom-navigation'
 import CurrentPlayerBalance from './current-player-balance'
-import FormJoinTablero from '../form-join-tablero'
 import PlayersList from './players-list'
-import SettingsTab from './settings-tab'
-import TransactionForm from './transaction-form'
-import TransactionHistory from './transaction-history'
-import TransactionReceivedCard from './transaction-received-card'
+
+// Lazy load components que solo se cargan cuando se necesitan
+const FormJoinTablero = dynamic(() => import('../form-join-tablero'), {
+  loading: () => <div className="animate-pulse text-muted-foreground text-center py-8">Cargando...</div>
+})
+
+const SettingsTab = dynamic(() => import('./settings-tab'), {
+  loading: () => <div className="space-y-6 pb-24"><div className="h-8 w-48 bg-muted animate-pulse rounded" /><div className="h-64 bg-muted animate-pulse rounded-lg" /></div>
+})
+
+const TransactionForm = dynamic(() => import('./transaction-form'), {
+  ssr: false
+})
+
+const TransactionHistory = dynamic(() => import('./transaction-history'), {
+  loading: () => <div className="flex flex-col h-full -mx-5 pb-20"><div className="px-5 pb-3 space-y-3"><div className="h-8 w-32 bg-muted animate-pulse rounded" /><div className="h-10 bg-muted animate-pulse rounded" /></div><div className="flex-1 px-5 space-y-2"><div className="h-32 bg-muted animate-pulse rounded-xl" /></div></div>
+})
+
+const TransactionReceivedCard = dynamic(() => import('./transaction-received-card'), {
+  ssr: false
+})
 
 type PlayerWithUser = TPlayer & {
   user?: User | null

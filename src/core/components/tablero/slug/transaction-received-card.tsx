@@ -1,8 +1,10 @@
 'use client'
 
-import confetti from 'canvas-confetti'
-import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
+
+// Lazy load confetti solo cuando se necesita
+const loadConfetti = () => import('canvas-confetti').then(mod => mod.default)
 
 interface TransactionReceivedCardProps {
   amount: number
@@ -11,11 +13,12 @@ interface TransactionReceivedCardProps {
   onClose: () => void
 }
 
-// Función mejorada para mostrar confetti
-function showEnhancedConfetti () {
-  const duration = 2000
+// Función simplificada para mostrar confetti
+async function showEnhancedConfetti () {
+  const confetti = await loadConfetti()
+  const duration = 1500
   const animationEnd = Date.now() + duration
-  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 }
+  const defaults = { startVelocity: 25, spread: 360, ticks: 50, zIndex: 9999 }
 
   function randomInRange (min: number, max: number) {
     return Math.random() * (max - min) + min
@@ -28,27 +31,27 @@ function showEnhancedConfetti () {
       return clearInterval(interval)
     }
 
-    const particleCount = 50 * (timeLeft / duration)
+    const particleCount = 30 * (timeLeft / duration)
     confetti({
       ...defaults,
       particleCount,
       origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-      colors: ['#22c55e', '#16a34a', '#15803d', '#fbbf24', '#f59e0b', '#eab308'],
+      colors: ['#22c55e', '#16a34a', '#fbbf24', '#f59e0b'],
     })
     confetti({
       ...defaults,
       particleCount,
       origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-      colors: ['#22c55e', '#16a34a', '#15803d', '#fbbf24', '#f59e0b', '#eab308'],
+      colors: ['#22c55e', '#16a34a', '#fbbf24', '#f59e0b'],
     })
-  }, 250)
+  }, 300)
 
-  // Confetti inicial más intenso
+  // Confetti inicial simplificado
   confetti({
-    particleCount: 150,
-    spread: 100,
+    particleCount: 100,
+    spread: 80,
     origin: { y: 0.5 },
-    colors: ['#22c55e', '#16a34a', '#15803d', '#fbbf24', '#f59e0b', '#eab308'],
+    colors: ['#22c55e', '#16a34a', '#fbbf24', '#f59e0b'],
   })
 }
 
@@ -64,48 +67,19 @@ const monopolyColors = [
   { bg: 'bg-cyan-500', border: 'border-cyan-700', text: 'text-cyan-900' }, // Cian
 ]
 
-// Componente de billete estilo Monopoly
+// Componente de billete simplificado (sin animaciones complejas)
 function MoneyBill ({ delay = 0, rotation = 0, index = 0, color }: { delay?: number; rotation?: number; index?: number; color: typeof monopolyColors[0] }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0, rotate: -45, y: -50 }}
-      animate={{
-        opacity: 1,
-        scale: 1,
-        rotate: rotation,
-        y: [0, -8, 0],
-        x: [0, Math.sin(index) * 3, 0]
-      }}
-      exit={{ opacity: 0, scale: 0, rotate: 45, y: 50 }}
-      transition={{
-        delay,
-        duration: 0.6,
-        type: "spring",
-        stiffness: 200,
-        damping: 15,
-        y: {
-          repeat: Infinity,
-          duration: 2.5 + index * 0.2,
-          ease: "easeInOut"
-        },
-        x: {
-          repeat: Infinity,
-          duration: 3 + index * 0.3,
-          ease: "easeInOut"
-        }
-      }}
-      className="relative"
+    <div
+      className="relative animate-in fade-in zoom-in-95 duration-500"
       style={{
-        transformStyle: 'preserve-3d',
-        perspective: '1000px',
+        animationDelay: `${delay * 1000}ms`,
+        transform: `rotate(${rotation}deg)`,
         zIndex: 10 - index
       }}
     >
-      <motion.div
+      <div
         className={`w-12 h-24 ${color.bg} rounded shadow-lg border-2 ${color.border} flex items-center justify-center relative overflow-hidden`}
-        style={{
-          transform: `rotateY(${rotation}deg) rotateZ(${rotation * 0.3}deg)`,
-        }}
       >
         {/* Patrón estilo Monopoly */}
         <div className="absolute inset-0 opacity-30">
@@ -116,21 +90,8 @@ function MoneyBill ({ delay = 0, rotation = 0, index = 0, color }: { delay?: num
         <div className={`${color.text} font-bold text-sm z-10 font-serif`}>
           $
         </div>
-        {/* Brillo sutil */}
-        <motion.div
-          className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent -skew-x-12"
-          animate={{
-            x: ['-200%', '200%'],
-          }}
-          transition={{
-            duration: 2.5,
-            repeat: Infinity,
-            ease: "linear",
-            delay: index * 0.3
-          }}
-        />
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }
 
@@ -147,10 +108,14 @@ export default function TransactionReceivedCard ({
     // Auto-cerrar después de 3 segundos
     const timer = setTimeout(() => {
       setIsVisible(false)
+      // Llamar onClose después de un pequeño delay para permitir la animación de salida
+      setTimeout(() => {
+        onClose()
+      }, 300)
     }, 3000)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [onClose])
 
   // Generar rotaciones aleatorias para los billetes
   const billRotations = [-15, 10, -8, 12, -5, 8, -12, 6]
@@ -158,74 +123,41 @@ export default function TransactionReceivedCard ({
   // Calcular cuántos billetes mostrar (máximo 8)
   const numBills = Math.min(8, Math.max(3, Math.ceil(amount / 50)))
 
-  return (
-    <AnimatePresence onExitComplete={onClose}>
-      {isVisible && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center pointer-events-none gap-6"
-        >
-          {/* Billetes animados - solo billetes, sin fondo */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 25,
-              duration: 0.5
-            }}
-            className="flex justify-center items-center gap-2 flex-wrap"
-            style={{ maxWidth: '300px' }}
-          >
-            {Array.from({ length: numBills }).map((_, index) => {
-              const rotation = billRotations[index % billRotations.length]
-              const color = monopolyColors[index % monopolyColors.length]
-              return (
-                <MoneyBill
-                  key={index}
-                  delay={0.1 + index * 0.08}
-                  rotation={rotation}
-                  index={index}
-                  color={color}
-                />
-              )
-            })}
-          </motion.div>
+  if (!isVisible) return null
 
-          {/* Monto grande */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.5, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.5, y: 20 }}
-            transition={{
-              delay: 0.4,
-              type: "spring",
-              stiffness: 200,
-              damping: 15
-            }}
-            className="text-center"
-          >
-            <motion.div
-              className="text-6xl font-bold text-green-600 drop-shadow-lg"
-              animate={{
-                scale: [1, 1.05, 1],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            >
-              ${amount.toLocaleString()}
-            </motion.div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center pointer-events-none gap-6 animate-in fade-in duration-300"
+    >
+      {/* Billetes animados - solo billetes, sin fondo */}
+      <div
+        className="flex justify-center items-center gap-2 flex-wrap animate-in zoom-in-95 duration-500"
+        style={{ maxWidth: '300px' }}
+      >
+        {Array.from({ length: numBills }).map((_, index) => {
+          const rotation = billRotations[index % billRotations.length]
+          const color = monopolyColors[index % monopolyColors.length]
+          return (
+            <MoneyBill
+              key={index}
+              delay={0.1 + index * 0.08}
+              rotation={rotation}
+              index={index}
+              color={color}
+            />
+          )
+        })}
+      </div>
+
+      {/* Monto grande */}
+      <div
+        className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500"
+        style={{ animationDelay: '400ms' }}
+      >
+        <div className="text-6xl font-bold text-green-600 drop-shadow-lg animate-pulse">
+          ${amount.toLocaleString()}
+        </div>
+      </div>
+    </div>
   )
 }

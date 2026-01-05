@@ -5,8 +5,10 @@ import DeleteBtnTablero from '@/src/core/components/tablero/delete-btn-tablero'
 import LeaveBtnTablero from '@/src/core/components/tablero/leave-btn-tablero'
 import type { TPlayer, User } from '@/src/core/lib/db/schema'
 import { CrownIcon, QrCodeIcon, UsersIcon } from 'lucide-react'
-import QRCode from 'qrcode'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
+// Lazy load QRCode solo cuando se necesita
+const loadQRCode = () => import('qrcode').then(mod => mod.default)
 
 interface SettingsTabProps {
   tableroId: string
@@ -27,6 +29,7 @@ export default function SettingsTab ({
 }: SettingsTabProps) {
   const humanPlayers = players.filter(p => !p.isSystemPlayer)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [qrLoaded, setQrLoaded] = useState(false)
 
   // Generar la URL del tablero de forma síncrona (no necesita useEffect)
   const tableroUrl = typeof window !== 'undefined'
@@ -34,18 +37,21 @@ export default function SettingsTab ({
     : ''
 
   useEffect(() => {
-    // Generar el código QR solo cuando el canvas esté disponible
-    if (canvasRef.current && tableroUrl) {
-      QRCode.toCanvas(canvasRef.current, tableroUrl, {
-        width: 200,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF',
-        },
-      })
+    // Lazy load y generar el código QR solo cuando el canvas esté disponible
+    if (canvasRef.current && tableroUrl && !qrLoaded) {
+      loadQRCode().then((QRCode) => {
+        QRCode.toCanvas(canvasRef.current!, tableroUrl, {
+          width: 200,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF',
+          },
+        })
+        setQrLoaded(true)
+      }).catch(console.error)
     }
-  }, [tableroUrl])
+  }, [tableroUrl, qrLoaded])
 
   return (
     <div className="space-y-6 pb-24">

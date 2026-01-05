@@ -299,6 +299,51 @@ export async function actionGetTableroStats (tableroId: string) {
       .filter(t => t.type === 'transfer' || t.type === 'bank_give')
       .reduce((sum, t) => sum + t.amount, 0)
 
+    //* 10. Encontrar la mayor transferencia (solo tipo 'transfer')
+    // Obtener todos los jugadores incluyendo del sistema para buscar en las transacciones
+    const allPlayersIncludingSystem = await db
+      .select({
+        player: player,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        },
+      })
+      .from(player)
+      .leftJoin(user, eq(player.userId, user.id))
+      .where(eq(player.tableroId, tableroId))
+
+    const transferTransactions = allTransactions.filter(t => t.type === 'transfer' && t.fromPlayerId && t.toPlayerId)
+    let largestTransfer = null
+
+    if (transferTransactions.length > 0) {
+      const maxTransfer = transferTransactions.reduce((max, t) => t.amount > max.amount ? t : max, transferTransactions[0])
+
+      // Obtener información del jugador que hizo la transferencia (incluyendo jugadores del sistema)
+      const fromPlayerData = allPlayersIncludingSystem.find(({ player }) => player.id === maxTransfer.fromPlayerId)
+      const toPlayerData = allPlayersIncludingSystem.find(({ player }) => player.id === maxTransfer.toPlayerId)
+
+      // Solo incluir si ambos jugadores no son del sistema (solo transferencias entre jugadores reales)
+      if (fromPlayerData && toPlayerData && !fromPlayerData.player.isSystemPlayer && !toPlayerData.player.isSystemPlayer) {
+        largestTransfer = {
+          amount: maxTransfer.amount,
+          description: maxTransfer.description || null,
+          fromPlayer: {
+            id: fromPlayerData.player.id,
+            name: fromPlayerData.player.name,
+            user: fromPlayerData.user || null,
+          },
+          toPlayer: {
+            id: toPlayerData.player.id,
+            name: toPlayerData.player.name,
+            user: toPlayerData.user || null,
+          },
+        }
+      }
+    }
+
     return {
       success: true,
       data: {
@@ -308,6 +353,7 @@ export async function actionGetTableroStats (tableroId: string) {
         totalTransactions,
         totalMoneyInCirculation,
         playersCount: allPlayers.length,
+        largestTransfer,
       },
     }
   } catch (error) {
