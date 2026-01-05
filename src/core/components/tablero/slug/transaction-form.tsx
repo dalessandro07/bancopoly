@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/src/core/components/ui/sheet'
 import type { TPlayer } from '@/src/core/lib/db/schema'
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
@@ -36,6 +37,7 @@ export default function TransactionForm ({
   const [isOpen, setIsOpen] = useState(() => !!preselectedToPlayerId)
   const [formKey, setFormKey] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
+  const router = useRouter()
 
   // Abrir el formulario cuando se preselecciona un jugador
   useEffect(() => {
@@ -74,6 +76,8 @@ export default function TransactionForm ({
           onOpenChange(false)
         }
         setFormKey(k => k + 1)
+        // Actualizar el contenido de la página para el usuario que hace la transacción
+        router.refresh()
       }
     })
   }

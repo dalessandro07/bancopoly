@@ -11,7 +11,7 @@ export const authClient = createAuthClient({
       promptOptions: {
         baseDelay: 1500,
         maxAttempts: 5
-      }
+      },
     })
   ]
 })
@@ -19,7 +19,7 @@ export const authClient = createAuthClient({
 export async function signInSocial (provider: "google", redirectTo?: string) {
   return authClient.signIn.social({
     provider,
-    callbackURL: redirectTo || "/",
+    callbackURL: redirectTo || window.location.href,
   })
 }
 

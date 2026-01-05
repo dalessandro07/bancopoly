@@ -22,7 +22,7 @@ export default async function TableroPage({ params }: { params: Promise<{ slug: 
   const tablero = await actionGetTableroById(slug)
 
   // Si el tablero está cerrado, redirigir a resultados
-  if (tablero.tablero?.isEnded) {
+  if (tablero.tablero?.isEnded === 1) {
     redirect(`/tablero/${slug}/resultados`)
   }
 

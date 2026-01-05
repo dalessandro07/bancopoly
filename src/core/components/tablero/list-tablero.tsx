@@ -16,12 +16,12 @@ export default async function ListTablero () {
   const tableros = data || []
 
   // Separar tableros abiertos y cerrados
-  const tablerosAbiertos = tableros.filter(t => !t.isEnded)
-  const tablerosCerrados = tableros.filter(t => t.isEnded)
+  const tablerosAbiertos = tableros.filter(t => t.isEnded !== 1)
+  const tablerosCerrados = tableros.filter(t => t.isEnded === 1)
 
   const renderTablero = (tablero: typeof tableros[0]) => {
     const isCreator = tablero.userId === session?.user?.id
-    const href = tablero.isEnded ? `/tablero/${tablero.id}/resultados` : `/tablero/${tablero.id}`
+    const href = tablero.isEnded === 1 ? `/tablero/${tablero.id}/resultados` : `/tablero/${tablero.id}`
 
     return (
       <div
@@ -45,14 +45,14 @@ export default async function ListTablero () {
                   </span>
                 </div>
               )}
-              {tablero.isEnded && (
+              {tablero.isEnded === 1 && (
                 <Badge variant="secondary" className="text-xs">
                   Cerrado
                 </Badge>
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              {tablero.isEnded ? 'Ver resultados' : 'Toca para ingresar'}
+              {tablero.isEnded === 1 ? 'Ver resultados' : 'Toca para ingresar'}
             </p>
           </Link>
 

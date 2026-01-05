@@ -65,7 +65,7 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
       <aside className='flex flex-col gap-5 md:w-1/4'>
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-4xl font-luckiest-guy">{APP_NAME}</h1>
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <UserMenu
               name={session.user.name}
               image={session.user.image}

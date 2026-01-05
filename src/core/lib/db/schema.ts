@@ -1,30 +1,29 @@
 // AUTH
 
 import { relations } from "drizzle-orm"
-import { boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-export const user = pgTable("user", {
+export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
+  emailVerified: integer("email_verified").default(0).notNull(),
   image: text("image"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
+  createdAt: integer("created_at").default(0).notNull(),
+  updatedAt: integer("updated_at")
+    .default(0)
     .notNull(),
 })
 
-export const session = pgTable(
+export const session = sqliteTable(
   "session",
   {
     id: text("id").primaryKey(),
-    expiresAt: timestamp("expires_at").notNull(),
+    expiresAt: integer("expires_at").notNull(),
     token: text("token").notNull().unique(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .$onUpdate(() => /* @__PURE__ */ new Date())
+    createdAt: integer("created_at").default(0).notNull(),
+    updatedAt: integer("updated_at")
+      .default(0)
       .notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
@@ -35,7 +34,7 @@ export const session = pgTable(
   (table) => [index("session_userId_idx").on(table.userId)],
 )
 
-export const account = pgTable(
+export const account = sqliteTable(
   "account",
   {
     id: text("id").primaryKey(),
@@ -47,30 +46,29 @@ export const account = pgTable(
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
-    accessTokenExpiresAt: timestamp("access_token_expires_at"),
-    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    accessTokenExpiresAt: integer("access_token_expires_at"),
+    refreshTokenExpiresAt: integer("refresh_token_expires_at"),
     scope: text("scope"),
     password: text("password"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .$onUpdate(() => /* @__PURE__ */ new Date())
+    createdAt: integer("created_at").default(0).notNull(),
+    updatedAt: integer("updated_at")
+      .default(0)
       .notNull(),
   },
   (table) => [index("account_userId_idx").on(table.userId)],
 )
 
-export const verification = pgTable(
+export const verification = sqliteTable(
   "verification",
   {
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    expiresAt: integer("expires_at").notNull(),
+    createdAt: integer("created_at").default(0).notNull(),
+    updatedAt: integer("updated_at")
+      .default(0)
+      .notNull()
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 )
@@ -103,26 +101,26 @@ export type Verification = typeof verification.$inferSelect
 
 // GAME
 
-export const tablero = pgTable("tablero", {
+export const tablero = sqliteTable("tablero", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   // Configuración del juego
-  freeParkingEnabled: boolean("free_parking_enabled").default(true).notNull(),
-  isClosed: boolean("is_closed").default(false).notNull(),
-  isEnded: boolean("is_ended").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .$onUpdate(() => /* @__PURE__ */ new Date())
+  freeParkingEnabled: integer("free_parking_enabled").default(1).notNull(),
+  isClosed: integer("is_closed").default(0).notNull(),
+  isEnded: integer("is_ended").default(0).notNull(),
+  createdAt: integer("created_at").default(0).notNull(),
+  updatedAt: integer("updated_at")
+    .default(0)
     .notNull(),
 },
   (table) => [index("tablero_userId_idx").on(table.userId)]
 )
 
 // Jugadores en un tablero
-export const player = pgTable("player", {
+export const player = sqliteTable("player", {
   id: text("id").primaryKey(),
   tableroId: text("tablero_id")
     .notNull()
@@ -130,11 +128,11 @@ export const player = pgTable("player", {
   userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   balance: integer("balance").default(1500).notNull(), // Dinero inicial en Monopoly
-  isSystemPlayer: boolean("is_system_player").default(false).notNull(), // Jugadores del sistema (Banco, Parada Libre)
+  isSystemPlayer: integer("is_system_player").default(0).notNull(), // Jugadores del sistema (Banco, Parada Libre)
   systemPlayerType: text("system_player_type"), // 'bank', 'free_parking'
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .$onUpdate(() => /* @__PURE__ */ new Date())
+  createdAt: integer("created_at").default(0).notNull(),
+  updatedAt: integer("updated_at")
+    .default(0)
     .notNull(),
 },
   (table) => [
@@ -144,7 +142,7 @@ export const player = pgTable("player", {
 )
 
 // Transacciones de dinero
-export const transaction = pgTable("transaction", {
+export const transaction = sqliteTable("transaction", {
   id: text("id").primaryKey(),
   tableroId: text("tablero_id")
     .notNull()
@@ -154,7 +152,7 @@ export const transaction = pgTable("transaction", {
   amount: integer("amount").notNull(),
   type: text("type").notNull(), // 'transfer', 'bank_give', 'bank_take', 'free_parking', 'initial'
   description: text("description"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: integer("created_at").default(0).notNull(),
 },
   (table) => [
     index("transaction_tableroId_idx").on(table.tableroId),

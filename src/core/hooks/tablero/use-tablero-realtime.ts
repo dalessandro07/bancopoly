@@ -1,82 +1,12 @@
 'use client'
 
-import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
-import { createClient } from '@/supabase/client'
-import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import type { TPlayer, TTransaction } from '@/src/core/lib/db/schema'
+import { useRealtime } from '@/src/core/lib/realtime-client'
 import { useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 
 type PlayerWithUser = TPlayer & {
-  user?: User | null
-}
-
-type RealtimePayload<T extends Record<string, unknown>> = RealtimePostgresChangesPayload<T>
-
-// Tipos para los datos raw de Postgres (snake_case)
-interface RawPlayer {
-  id: string
-  tablero_id: string
-  user_id: string | null
-  name: string
-  balance: number
-  is_system_player: boolean
-  system_player_type: string | null
-  created_at: string
-  updated_at: string
-  [key: string]: unknown
-}
-
-interface RawTransaction {
-  id: string
-  tablero_id: string
-  from_player_id: string | null
-  to_player_id: string | null
-  amount: number
-  type: string
-  description: string | null
-  created_at: string
-  [key: string]: unknown
-}
-
-// Funciones para mapear snake_case a camelCase
-function mapPlayer (raw: RawPlayer): TPlayer {
-  // Postgres devuelve timestamp sin timezone, lo interpretamos como UTC
-  const createdAtUtc = raw.created_at.endsWith('Z')
-    ? raw.created_at
-    : `${raw.created_at}Z`
-  const updatedAtUtc = raw.updated_at.endsWith('Z')
-    ? raw.updated_at
-    : `${raw.updated_at}Z`
-
-  return {
-    id: raw.id,
-    tableroId: raw.tablero_id,
-    userId: raw.user_id,
-    name: raw.name,
-    balance: raw.balance,
-    isSystemPlayer: raw.is_system_player,
-    systemPlayerType: raw.system_player_type,
-    createdAt: new Date(createdAtUtc),
-    updatedAt: new Date(updatedAtUtc),
-  }
-}
-
-function mapTransaction (raw: RawTransaction): TTransaction {
-  // Postgres devuelve timestamp sin timezone, lo interpretamos como UTC
-  const createdAtUtc = raw.created_at.endsWith('Z')
-    ? raw.created_at
-    : `${raw.created_at}Z`
-
-  return {
-    id: raw.id,
-    tableroId: raw.tablero_id,
-    fromPlayerId: raw.from_player_id,
-    toPlayerId: raw.to_player_id,
-    amount: raw.amount,
-    type: raw.type,
-    description: raw.description,
-    createdAt: new Date(createdAtUtc),
-  }
+  user?: { id: string; name: string; email: string; image: string | null } | null
 }
 
 interface UseTableroRealtimeProps {
@@ -92,6 +22,54 @@ interface UseTableroRealtimeProps {
   players: TPlayer[]
 }
 
+// Función para convertir datos de realtime a TPlayer
+function mapPlayerFromRealtime (data: {
+  id: string
+  tableroId: string
+  userId: string | null
+  name: string
+  balance: number
+  isSystemPlayer: boolean
+  systemPlayerType: string | null
+  createdAt: string
+  updatedAt: string
+}): TPlayer {
+  return {
+    id: data.id,
+    tableroId: data.tableroId,
+    userId: data.userId,
+    name: data.name,
+    balance: data.balance,
+    isSystemPlayer: data.isSystemPlayer ? 1 : 0,
+    systemPlayerType: data.systemPlayerType,
+    createdAt: parseInt(data.createdAt),
+    updatedAt: parseInt(data.updatedAt),
+  }
+}
+
+// Función para convertir datos de realtime a TTransaction
+function mapTransactionFromRealtime (data: {
+  id: string
+  tableroId: string
+  fromPlayerId: string | null
+  toPlayerId: string | null
+  amount: number
+  type: string
+  description: string | null
+  createdAt: string
+}): TTransaction {
+  return {
+    id: data.id,
+    tableroId: data.tableroId,
+    fromPlayerId: data.fromPlayerId,
+    toPlayerId: data.toPlayerId,
+    amount: data.amount,
+    type: data.type,
+    description: data.description,
+    createdAt: parseInt(data.createdAt),
+  }
+}
+
 export function useTableroRealtime ({
   tableroId,
   currentPlayerId,
@@ -104,7 +82,6 @@ export function useTableroRealtime ({
   onTransactionReceived,
   players,
 }: UseTableroRealtimeProps) {
-  const supabase = createClient()
   const playersRef = useRef(players)
   const processedTransactionsRef = useRef<Set<string>>(new Set())
 
@@ -113,231 +90,285 @@ export function useTableroRealtime ({
     playersRef.current = players
   }, [players])
 
-  const handlePlayerChange = useCallback((payload: RealtimePayload<RawPlayer>) => {
+  const handlePlayerInserted = useCallback((data: {
+    id: string
+    tableroId: string
+    userId: string | null
+    name: string
+    balance: number
+    isSystemPlayer: boolean
+    systemPlayerType: string | null
+    createdAt: string
+    updatedAt: string
+  }) => {
+    const currentPlayers = playersRef.current
+    const newPlayer = mapPlayerFromRealtime(data)
+
+    // Solo procesar si pertenece a este tablero
+    if (newPlayer.tableroId !== tableroId) return
+
+    // Evitar duplicados
+    if (!currentPlayers.some(p => p.id === newPlayer.id)) {
+      if (!newPlayer.isSystemPlayer) {
+        toast.success(`${newPlayer.name} se unió al tablero`, {
+          position: 'top-center',
+        })
+      }
+      onPlayersChange([...currentPlayers, newPlayer])
+    }
+  }, [tableroId, onPlayersChange])
+
+  const handlePlayerUpdated = useCallback((data: {
+    id: string
+    tableroId: string
+    userId: string | null
+    name: string
+    balance: number
+    isSystemPlayer: boolean
+    systemPlayerType: string | null
+    createdAt: string
+    updatedAt: string
+  }) => {
     const currentPlayers = playersRef.current
 
-    if (payload.eventType === 'INSERT') {
-      const newPlayer = mapPlayer(payload.new as RawPlayer)
-      // Evitar duplicados
-      if (!currentPlayers.some(p => p.id === newPlayer.id)) {
-        if (!newPlayer.isSystemPlayer) {
-          toast.success(`${newPlayer.name} se unió al tablero`, {
-            position: 'top-center',
-          })
-        }
-        onPlayersChange([...currentPlayers, newPlayer])
+    // Solo procesar si pertenece a este tablero
+    if (data.tableroId !== tableroId) return
+
+    const existingPlayer = currentPlayers.find(p => p.id === data.id)
+    const updatedPlayer = mapPlayerFromRealtime(data)
+
+    // Mantener la información del usuario existente al actualizar
+    let playerWithUser: TPlayer | PlayerWithUser = updatedPlayer
+    if (existingPlayer && 'user' in existingPlayer) {
+      playerWithUser = {
+        ...updatedPlayer,
+        user: (existingPlayer as PlayerWithUser).user
       }
     }
 
-    if (payload.eventType === 'DELETE') {
-      const rawOld = payload.old as { id: string }
-      const wasPlayer = currentPlayers.find(p => p.id === rawOld.id)
-
-      // Verificar si el jugador eliminado es el actual
-      if (rawOld.id === currentPlayerId) {
-        toast.error('Has sido eliminado del tablero', {
-          position: 'top-center',
-        })
-        onCurrentPlayerRemoved?.()
-        return
+    // Actualizar el estado de jugadores
+    const updatedPlayers = currentPlayers.map(p => {
+      if (p.id === playerWithUser.id) {
+        return { ...playerWithUser }
       }
+      return p
+    })
 
-      if (wasPlayer && !wasPlayer.isSystemPlayer) {
-        toast.info(`${wasPlayer.name} salió del tablero`, {
-          position: 'top-center',
-        })
-      }
-      onPlayersChange(currentPlayers.filter(p => p.id !== rawOld.id))
+    // Verificar si hay un cambio en el balance
+    const existingBalance = existingPlayer?.balance
+    const newBalance = playerWithUser.balance
+    const balanceChanged = existingBalance !== newBalance
+
+    // Siempre actualizar el estado para reflejar cualquier cambio en el jugador
+    onPlayersChange(updatedPlayers)
+
+    // Notificar cambio de balance solo si realmente cambió
+    if (balanceChanged) {
+      onBalanceChange(playerWithUser.id, playerWithUser.balance)
     }
+  }, [tableroId, onPlayersChange, onBalanceChange])
 
-    if (payload.eventType === 'UPDATE') {
-      // Mantener la información del usuario existente al actualizar
-      const existingPlayer = currentPlayers.find(p => p.id === (payload.new as RawPlayer).id)
-      const updatedPlayer = mapPlayer(payload.new as RawPlayer)
-
-      // Preservar la información del usuario si existe (para PlayerWithUser)
-      // Necesitamos verificar si el jugador existente tiene la propiedad 'user'
-      let playerWithUser: TPlayer | PlayerWithUser = updatedPlayer
-      if (existingPlayer && 'user' in existingPlayer) {
-        playerWithUser = {
-          ...updatedPlayer,
-          user: (existingPlayer as PlayerWithUser).user
-        }
-      }
-
-      // Actualizar el estado de jugadores con el nuevo balance
-      // Crear un nuevo array y nuevos objetos para asegurar que React detecte el cambio
-      const updatedPlayers = currentPlayers.map(p => {
-        if (p.id === playerWithUser.id) {
-          // Crear un nuevo objeto para el jugador actualizado
-          // Esto asegura que React detecte el cambio
-          return { ...playerWithUser }
-        }
-        // Mantener los demás jugadores como están
-        return p
-      })
-
-      // Verificar si hay un cambio en el balance
-      const existingBalance = existingPlayer?.balance
-      const newBalance = playerWithUser.balance
-      const balanceChanged = existingBalance !== newBalance
-
-      // Siempre actualizar el estado para reflejar cualquier cambio en el jugador
-      onPlayersChange(updatedPlayers)
-
-      // Notificar cambio de balance solo si realmente cambió
-      if (balanceChanged) {
-        onBalanceChange(playerWithUser.id, playerWithUser.balance)
-      }
-    }
-  }, [currentPlayerId, onPlayersChange, onBalanceChange, onCurrentPlayerRemoved])
-
-  const handleTransactionChange = useCallback((payload: RealtimePayload<RawTransaction>) => {
+  const handlePlayerDeleted = useCallback((data: { id: string }) => {
     const currentPlayers = playersRef.current
+    const wasPlayer = currentPlayers.find(p => p.id === data.id)
 
-    if (payload.eventType === 'INSERT') {
-      const newTransaction = mapTransaction(payload.new as RawTransaction)
-
-      // Evitar duplicados usando un Set
-      if (processedTransactionsRef.current.has(newTransaction.id)) {
-        return
-      }
-      processedTransactionsRef.current.add(newTransaction.id)
-
-      const isSender = newTransaction.fromPlayerId === currentPlayerId
-      const isReceiver = newTransaction.toPlayerId === currentPlayerId
-
-      // Verificar si involucra banco o parada libre
-      const fromPlayer = currentPlayers.find(p => p.id === newTransaction.fromPlayerId)
-      const toPlayer = currentPlayers.find(p => p.id === newTransaction.toPlayerId)
-
-      const isFromBank = fromPlayer?.isSystemPlayer && fromPlayer?.systemPlayerType === 'bank'
-      const isToBank = toPlayer?.isSystemPlayer && toPlayer?.systemPlayerType === 'bank'
-      const isFromFreeParking = fromPlayer?.isSystemPlayer && fromPlayer?.systemPlayerType === 'free_parking'
-      const isToFreeParking = toPlayer?.isSystemPlayer && toPlayer?.systemPlayerType === 'free_parking'
-
-      const involvesSystemPlayer = isFromBank || isToBank || isFromFreeParking || isToFreeParking
-
-      // Mostrar card animada y confetti para el receptor
-      if (isReceiver) {
-        const fromName = isFromBank
-          ? 'Banco'
-          : isFromFreeParking
-            ? 'Parada Libre'
-            : fromPlayer?.name || 'Desconocido'
-
-        // Mostrar card animada inmersiva
-        onTransactionReceived?.({
-          amount: newTransaction.amount,
-          fromName,
-          description: newTransaction.description,
-        })
-
-        // También mostrar toast pequeño (opcional, puede removerse)
-        toast.success(`Recibiste $${newTransaction.amount.toLocaleString()} de ${fromName}`, {
-          position: 'top-center',
-          duration: 2000,
-        })
-      }
-
-      // Mostrar toast para el enviador
-      if (isSender) {
-        const toName = isToBank
-          ? 'Banco'
-          : isToFreeParking
-            ? 'Parada Libre'
-            : toPlayer?.name || 'Desconocido'
-
-        toast.info(`Enviaste $${newTransaction.amount.toLocaleString()} a ${toName}`, {
-          position: 'top-center',
-        })
-      }
-
-      // Si involucra banco o parada libre, mostrar toast para todos los demás jugadores
-      if (involvesSystemPlayer && !isSender && !isReceiver) {
-        const fromName = isFromBank
-          ? 'Banco'
-          : isFromFreeParking
-            ? 'Parada Libre'
-            : fromPlayer?.name || 'Desconocido'
-
-        const toName = isToBank
-          ? 'Banco'
-          : isToFreeParking
-            ? 'Parada Libre'
-            : toPlayer?.name || 'Desconocido'
-
-        const action = isFromBank || isFromFreeParking ? 'pagó' : 'envió'
-        toast.info(`${fromName} ${action} $${newTransaction.amount.toLocaleString()} a ${toName}`, {
-          position: 'top-center',
-        })
-      }
-
-      // Pasar la nueva transacción para que el wrapper la enriquezca y agregue
-      onTransactionsChange(newTransaction)
-    }
-  }, [currentPlayerId, onTransactionsChange, onTransactionReceived])
-
-  // Handler para cuando el tablero es eliminado o cerrado
-  const handleTableroChange = useCallback((payload: RealtimePostgresChangesPayload<{ id: string; is_ended: boolean }>) => {
-    if (payload.eventType === 'DELETE') {
-      toast.error('El tablero ha sido eliminado', {
+    // Verificar si el jugador eliminado es el actual
+    if (data.id === currentPlayerId) {
+      toast.error('Has sido eliminado del tablero', {
         position: 'top-center',
       })
-      onTableroDeleted?.()
+      onCurrentPlayerRemoved?.()
+      return
     }
 
-    if (payload.eventType === 'UPDATE') {
-      const newData = payload.new as { is_ended: boolean }
-      const oldData = payload.old as { is_ended: boolean }
+    if (wasPlayer && !wasPlayer.isSystemPlayer) {
+      toast.info(`${wasPlayer.name} salió del tablero`, {
+        position: 'top-center',
+      })
+    }
+    onPlayersChange(currentPlayers.filter(p => p.id !== data.id))
+  }, [currentPlayerId, onPlayersChange, onCurrentPlayerRemoved])
 
-      // Si el tablero fue cerrado (isEnded cambió de false a true)
-      if (!oldData.is_ended && newData.is_ended) {
-        toast.success('El tablero ha sido cerrado. Redirigiendo a resultados...', {
-          position: 'top-center',
-        })
-        onTableroClosed?.()
+  const handleTransactionInserted = useCallback((data: {
+    id: string
+    tableroId: string
+    fromPlayerId: string | null
+    toPlayerId: string | null
+    amount: number
+    type: string
+    description: string | null
+    createdAt: string
+  }) => {
+    const currentPlayers = playersRef.current
+
+    // Solo procesar si pertenece a este tablero
+    if (data.tableroId !== tableroId) return
+
+    const newTransaction = mapTransactionFromRealtime(data)
+
+    // Evitar duplicados usando un Set
+    if (processedTransactionsRef.current.has(newTransaction.id)) {
+      return
+    }
+    processedTransactionsRef.current.add(newTransaction.id)
+
+    const isSender = newTransaction.fromPlayerId === currentPlayerId
+    const isReceiver = newTransaction.toPlayerId === currentPlayerId
+
+    // Verificar si involucra banco o parada libre
+    const fromPlayer = currentPlayers.find(p => p.id === newTransaction.fromPlayerId)
+    const toPlayer = currentPlayers.find(p => p.id === newTransaction.toPlayerId)
+
+    const isFromBank = fromPlayer?.isSystemPlayer && fromPlayer?.systemPlayerType === 'bank'
+    const isToBank = toPlayer?.isSystemPlayer && toPlayer?.systemPlayerType === 'bank'
+    const isFromFreeParking = fromPlayer?.isSystemPlayer && fromPlayer?.systemPlayerType === 'free_parking'
+    const isToFreeParking = toPlayer?.isSystemPlayer && toPlayer?.systemPlayerType === 'free_parking'
+
+    const involvesSystemPlayer = isFromBank || isToBank || isFromFreeParking || isToFreeParking
+
+    // Mostrar card animada y confetti para el receptor
+    if (isReceiver) {
+      const fromName = isFromBank
+        ? 'Banco'
+        : isFromFreeParking
+          ? 'Parada Libre'
+          : fromPlayer?.name || 'Desconocido'
+
+      // Mostrar card animada inmersiva
+      onTransactionReceived?.({
+        amount: newTransaction.amount,
+        fromName,
+        description: newTransaction.description,
+      })
+
+      // También mostrar toast pequeño
+      toast.success(`Recibiste $${newTransaction.amount.toLocaleString()} de ${fromName}`, {
+        position: 'top-center',
+        duration: 2000,
+      })
+    }
+
+    // Mostrar toast para el enviador
+    if (isSender) {
+      const toName = isToBank
+        ? 'Banco'
+        : isToFreeParking
+          ? 'Parada Libre'
+          : toPlayer?.name || 'Desconocido'
+
+      toast.info(`Enviaste $${newTransaction.amount.toLocaleString()} a ${toName}`, {
+        position: 'top-center',
+      })
+    }
+
+    // Si involucra banco o parada libre, mostrar toast para todos los demás jugadores
+    if (involvesSystemPlayer && !isSender && !isReceiver) {
+      const fromName = isFromBank
+        ? 'Banco'
+        : isFromFreeParking
+          ? 'Parada Libre'
+          : fromPlayer?.name || 'Desconocido'
+
+      const toName = isToBank
+        ? 'Banco'
+        : isToFreeParking
+          ? 'Parada Libre'
+          : toPlayer?.name || 'Desconocido'
+
+      const action = isFromBank || isFromFreeParking ? 'pagó' : 'envió'
+      toast.info(`${fromName} ${action} $${newTransaction.amount.toLocaleString()} a ${toName}`, {
+        position: 'top-center',
+      })
+    }
+
+    // Pasar la nueva transacción para que el wrapper la enriquezca y agregue
+    onTransactionsChange(newTransaction)
+  }, [tableroId, currentPlayerId, onTransactionsChange, onTransactionReceived])
+
+  const handleTableroUpdated = useCallback((data: { id: string; isEnded: boolean }) => {
+    if (data.id !== tableroId) return
+
+    // Si el tablero fue cerrado
+    if (data.isEnded) {
+      toast.success('El tablero ha sido cerrado. Redirigiendo a resultados...', {
+        position: 'top-center',
+      })
+      onTableroClosed?.()
+    }
+  }, [tableroId, onTableroClosed])
+
+  const handleTableroDeleted = useCallback((data: { id: string }) => {
+    if (data.id !== tableroId) return
+
+    toast.error('El tablero ha sido eliminado', {
+      position: 'top-center',
+    })
+    onTableroDeleted?.()
+  }, [tableroId, onTableroDeleted])
+
+  // Suscribirse a eventos de realtime usando canales específicos del tablero
+  useRealtime({
+    channels: [`tablero:${tableroId}`],
+    events: [
+      'tablero.player.inserted',
+      'tablero.player.updated',
+      'tablero.player.deleted',
+      'tablero.transaction.inserted',
+      'tablero.tablero.updated',
+      'tablero.tablero.deleted',
+    ],
+    onData ({ event, data, channel }) {
+      if (channel !== `tablero:${tableroId}`) return
+
+      switch (event) {
+        case 'tablero.player.inserted':
+          handlePlayerInserted(data as unknown as {
+            id: string
+            tableroId: string
+            userId: string | null
+            name: string
+            balance: number
+            isSystemPlayer: boolean
+            systemPlayerType: string | null
+            createdAt: string
+            updatedAt: string
+          })
+          break
+        case 'tablero.player.updated':
+          handlePlayerUpdated(data as unknown as {
+            id: string
+            tableroId: string
+            userId: string | null
+            name: string
+            balance: number
+            isSystemPlayer: boolean
+            systemPlayerType: string | null
+            createdAt: string
+            updatedAt: string
+          })
+          break
+        case 'tablero.player.deleted':
+          handlePlayerDeleted(data as unknown as { id: string })
+          break
+        case 'tablero.transaction.inserted':
+          handleTransactionInserted(data as unknown as {
+            id: string
+            tableroId: string
+            fromPlayerId: string | null
+            toPlayerId: string | null
+            amount: number
+            type: string
+            description: string | null
+            createdAt: string
+          })
+          break
+        case 'tablero.tablero.updated':
+          handleTableroUpdated(data as unknown as { id: string; isEnded: boolean })
+          break
+        case 'tablero.tablero.deleted':
+          handleTableroDeleted(data as unknown as { id: string })
+          break
       }
-    }
-  }, [onTableroDeleted, onTableroClosed])
-
-  useEffect(() => {
-    const channel = supabase
-      .channel(`tablero:${tableroId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'player',
-          filter: `tablero_id=eq.${tableroId}`,
-        },
-        handlePlayerChange
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'transaction',
-          filter: `tablero_id=eq.${tableroId}`,
-        },
-        handleTransactionChange
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tablero',
-          filter: `id=eq.${tableroId}`,
-        },
-        handleTableroChange
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [tableroId, supabase, handlePlayerChange, handleTransactionChange, handleTableroChange])
+    },
+  })
 }

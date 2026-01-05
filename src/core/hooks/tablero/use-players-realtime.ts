@@ -1,50 +1,39 @@
 'use client'
 
 import type { TPlayer, User } from '@/src/core/lib/db/schema'
-import { createClient } from '@/supabase/client'
-import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import { useRealtime } from '@/src/core/lib/realtime-client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-
-// Tipo para los datos raw de Postgres (snake_case)
-interface RawPlayer {
-  id: string
-  tablero_id: string
-  user_id: string | null
-  name: string
-  balance: number
-  is_system_player: boolean
-  system_player_type: string | null
-  created_at: string
-  updated_at: string
-}
-
-type RealtimePayload = RealtimePostgresChangesPayload<RawPlayer>
 
 type PlayerWithUser = TPlayer & {
   user?: User | null
 }
 
-// Función para mapear snake_case a camelCase
-function mapPlayer(raw: RawPlayer, existingUser?: User | null): PlayerWithUser {
-  // Postgres devuelve timestamp sin timezone, lo interpretamos como UTC
-  const createdAtUtc = raw.created_at.endsWith('Z')
-    ? raw.created_at
-    : `${raw.created_at}Z`
-  const updatedAtUtc = raw.updated_at.endsWith('Z')
-    ? raw.updated_at
-    : `${raw.updated_at}Z`
-
+// Función para convertir datos de realtime a TPlayer
+function mapPlayerFromRealtime (
+  data: {
+    id: string
+    tableroId: string
+    userId: string | null
+    name: string
+    balance: number
+    isSystemPlayer: boolean
+    systemPlayerType: string | null
+    createdAt: string
+    updatedAt: string
+  },
+  existingUser?: User | null
+): PlayerWithUser {
   return {
-    id: raw.id,
-    tableroId: raw.tablero_id,
-    userId: raw.user_id,
-    name: raw.name,
-    balance: raw.balance,
-    isSystemPlayer: raw.is_system_player,
-    systemPlayerType: raw.system_player_type,
-    createdAt: new Date(createdAtUtc),
-    updatedAt: new Date(updatedAtUtc),
+    id: data.id,
+    tableroId: data.tableroId,
+    userId: data.userId,
+    name: data.name,
+    balance: data.balance,
+    isSystemPlayer: data.isSystemPlayer ? 1 : 0,
+    systemPlayerType: data.systemPlayerType,
+    createdAt: parseInt(data.createdAt),
+    updatedAt: parseInt(data.updatedAt),
     user: existingUser,
   }
 }
@@ -55,8 +44,7 @@ interface UsePlayersRealtimeProps {
   enabled?: boolean
 }
 
-export function usePlayersRealtime({ tableroId, initialPlayers, enabled = true }: UsePlayersRealtimeProps): PlayerWithUser[] {
-  const supabase = createClient()
+export function usePlayersRealtime ({ tableroId, initialPlayers, enabled = true }: UsePlayersRealtimeProps): PlayerWithUser[] {
   const [players, setPlayers] = useState<PlayerWithUser[]>(initialPlayers)
   const playersRef = useRef(players)
 
@@ -64,61 +52,109 @@ export function usePlayersRealtime({ tableroId, initialPlayers, enabled = true }
     playersRef.current = players
   }, [players])
 
-  const handlePlayerChange = useCallback((payload: RealtimePayload) => {
+  const handlePlayerInserted = useCallback((data: {
+    id: string
+    tableroId: string
+    userId: string | null
+    name: string
+    balance: number
+    isSystemPlayer: boolean
+    systemPlayerType: string | null
+    createdAt: string
+    updatedAt: string
+  }) => {
     const currentPlayers = playersRef.current
 
-    if (payload.eventType === 'INSERT') {
-      const newPlayer = mapPlayer(payload.new as RawPlayer)
-      if (!currentPlayers.some(p => p.id === newPlayer.id)) {
-        if (!newPlayer.isSystemPlayer) {
-          toast.success(`${newPlayer.name} se unió al tablero`, {
-            position: 'top-center',
-          })
-        }
-        setPlayers([...currentPlayers, newPlayer])
-      }
-    }
+    // Solo procesar si pertenece a este tablero
+    if (data.tableroId !== tableroId) return
 
-    if (payload.eventType === 'DELETE') {
-      const rawOld = payload.old as { id: string }
-      const wasPlayer = currentPlayers.find(p => p.id === rawOld.id)
-      if (wasPlayer && !wasPlayer.isSystemPlayer) {
-        toast.info(`${wasPlayer.name} salió del tablero`, {
+    const newPlayer = mapPlayerFromRealtime(data)
+    if (!currentPlayers.some(p => p.id === newPlayer.id)) {
+      if (!newPlayer.isSystemPlayer) {
+        toast.success(`${newPlayer.name} se unió al tablero`, {
           position: 'top-center',
         })
       }
-      setPlayers(currentPlayers.filter(p => p.id !== rawOld.id))
+      setPlayers([...currentPlayers, newPlayer])
     }
+  }, [tableroId])
 
-    if (payload.eventType === 'UPDATE') {
-      // Mantener la información del usuario existente al actualizar
-      const existingPlayer = currentPlayers.find(p => p.id === (payload.new as RawPlayer).id)
-      const updatedPlayer = mapPlayer(payload.new as RawPlayer, existingPlayer?.user)
-      setPlayers(currentPlayers.map(p => p.id === updatedPlayer.id ? updatedPlayer : p))
+  const handlePlayerUpdated = useCallback((data: {
+    id: string
+    tableroId: string
+    userId: string | null
+    name: string
+    balance: number
+    isSystemPlayer: boolean
+    systemPlayerType: string | null
+    createdAt: string
+    updatedAt: string
+  }) => {
+    const currentPlayers = playersRef.current
+
+    // Solo procesar si pertenece a este tablero
+    if (data.tableroId !== tableroId) return
+
+    const existingPlayer = currentPlayers.find(p => p.id === data.id)
+    const updatedPlayer = mapPlayerFromRealtime(data, existingPlayer?.user)
+    setPlayers(currentPlayers.map(p => p.id === updatedPlayer.id ? updatedPlayer : p))
+  }, [tableroId])
+
+  const handlePlayerDeleted = useCallback((data: { id: string }) => {
+    const currentPlayers = playersRef.current
+    const wasPlayer = currentPlayers.find(p => p.id === data.id)
+    if (wasPlayer && !wasPlayer.isSystemPlayer) {
+      toast.info(`${wasPlayer.name} salió del tablero`, {
+        position: 'top-center',
+      })
     }
+    setPlayers(currentPlayers.filter(p => p.id !== data.id))
   }, [])
 
-  useEffect(() => {
-    if (!enabled) return
+  useRealtime({
+    enabled,
+    channels: [`tablero-players:${tableroId}`],
+    events: [
+      'tablero.player.inserted',
+      'tablero.player.updated',
+      'tablero.player.deleted',
+    ],
+    onData ({ event, data, channel }) {
+      if (channel !== `tablero-players:${tableroId}`) return
 
-    const channel = supabase
-      .channel(`tablero-players:${tableroId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'player',
-          filter: `tablero_id=eq.${tableroId}`,
-        },
-        handlePlayerChange
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [tableroId, supabase, handlePlayerChange, enabled])
+      switch (event) {
+        case 'tablero.player.inserted':
+          handlePlayerInserted(data as unknown as {
+            id: string
+            tableroId: string
+            userId: string | null
+            name: string
+            balance: number
+            isSystemPlayer: boolean
+            systemPlayerType: string | null
+            createdAt: string
+            updatedAt: string
+          })
+          break
+        case 'tablero.player.updated':
+          handlePlayerUpdated(data as unknown as {
+            id: string
+            tableroId: string
+            userId: string | null
+            name: string
+            balance: number
+            isSystemPlayer: boolean
+            systemPlayerType: string | null
+            createdAt: string
+            updatedAt: string
+          })
+          break
+        case 'tablero.player.deleted':
+          handlePlayerDeleted(data as unknown as { id: string })
+          break
+      }
+    },
+  })
 
   return players
 }

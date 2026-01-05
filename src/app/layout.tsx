@@ -2,6 +2,7 @@ import { APP_DESCRIPTION, APP_NAME } from '@/src/core/lib/constants'
 import type { Metadata } from "next"
 import { Luckiest_Guy } from "next/font/google"
 import { Toaster } from 'sonner'
+import { Providers } from "./providers"
 import "./globals.css"
 
 const luckiestGuy = Luckiest_Guy({
@@ -28,9 +29,11 @@ export default function RootLayout ({
       <body
         className={`${luckiestGuy.variable} antialiased dark`}
       >
-        <div className='h-dvh'>
-          {children}
-        </div>
+        <Providers>
+          <div className='h-dvh'>
+            {children}
+          </div>
+        </Providers>
         <Toaster position="top-center" />
       </body>
     </html>

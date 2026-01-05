@@ -1,8 +1,8 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
-import { useEffect, useState } from 'react'
 import confetti from 'canvas-confetti'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
 
 interface TransactionReceivedCardProps {
   amount: number
@@ -12,12 +12,12 @@ interface TransactionReceivedCardProps {
 }
 
 // Función mejorada para mostrar confetti
-function showEnhancedConfetti() {
+function showEnhancedConfetti () {
   const duration = 2000
   const animationEnd = Date.now() + duration
   const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 }
 
-  function randomInRange(min: number, max: number) {
+  function randomInRange (min: number, max: number) {
     return Math.random() * (max - min) + min
   }
 
@@ -65,7 +65,7 @@ const monopolyColors = [
 ]
 
 // Componente de billete estilo Monopoly
-function MoneyBill({ delay = 0, rotation = 0, index = 0, color }: { delay?: number; rotation?: number; index?: number; color: typeof monopolyColors[0] }) {
+function MoneyBill ({ delay = 0, rotation = 0, index = 0, color }: { delay?: number; rotation?: number; index?: number; color: typeof monopolyColors[0] }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0, rotate: -45, y: -50 }}
@@ -118,7 +118,7 @@ function MoneyBill({ delay = 0, rotation = 0, index = 0, color }: { delay?: numb
         </div>
         {/* Brillo sutil */}
         <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12"
+          className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent -skew-x-12"
           animate={{
             x: ['-200%', '200%'],
           }}
@@ -134,10 +134,8 @@ function MoneyBill({ delay = 0, rotation = 0, index = 0, color }: { delay?: numb
   )
 }
 
-export default function TransactionReceivedCard({
+export default function TransactionReceivedCard ({
   amount,
-  fromName,
-  description,
   onClose,
 }: TransactionReceivedCardProps) {
   const [isVisible, setIsVisible] = useState(true)

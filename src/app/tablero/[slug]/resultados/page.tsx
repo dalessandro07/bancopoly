@@ -18,7 +18,7 @@ export default async function ResultadosPage({ params }: { params: Promise<{ slu
   }
 
   // Verificar que el tablero esté cerrado
-  if (!tablero.tablero.isEnded) {
+  if (tablero.tablero.isEnded !== 1) {
     redirect(`/tablero/${slug}`)
   }
 

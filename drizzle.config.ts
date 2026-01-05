@@ -5,9 +5,10 @@ config({ path: '.env' })
 
 export default defineConfig({
   schema: './src/core/lib/db/schema.ts',
-  out: './supabase/migrations',
-  dialect: 'postgresql',
+  out: './migrations',
+  dialect: 'turso',
   dbCredentials: {
-    url: process.env.DATABASE_URL as string,
+    url: process.env.TURSO_CONNECTION_URL!,
+    authToken: process.env.TURSO_AUTH_TOKEN!,
   },
 })
