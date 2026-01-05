@@ -79,7 +79,7 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
 
       <section className='flex flex-col grow'>
         <div className='flex flex-col gap-5'>
-          <div className='flex flex-col sm:flex-row gap-3'>
+          <div className='flex flex-col gap-3'>
             <div className='flex-1'>
               <FormNewTablero />
             </div>
