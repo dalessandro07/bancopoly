@@ -2,6 +2,7 @@ import GoogleLogin from '@/src/core/components/auth/google-login'
 import UserMenu from '@/src/core/components/auth/user-menu'
 import FormNewTablero from '@/src/core/components/tablero/form-new-tablero'
 import ListTablero from '@/src/core/components/tablero/list-tablero'
+import QRReader from '@/src/core/components/tablero/qr-reader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/core/components/ui/card'
 import { auth } from '@/src/core/lib/auth'
 import { APP_DESCRIPTION, APP_NAME } from '@/src/core/lib/constants'
@@ -78,7 +79,12 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
 
       <section className='flex flex-col grow'>
         <div className='flex flex-col gap-5'>
-          <FormNewTablero />
+          <div className='flex flex-col sm:flex-row gap-3'>
+            <div className='flex-1'>
+              <FormNewTablero />
+            </div>
+            <QRReader />
+          </div>
           <Suspense fallback={<div>Cargando tableros...</div>}>
             <ListTablero />
           </Suspense>

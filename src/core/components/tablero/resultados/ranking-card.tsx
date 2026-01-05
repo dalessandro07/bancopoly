@@ -17,8 +17,8 @@ export function RankingCard ({ ranking, currentUserId }: RankingCardProps) {
   const podiumOrder = topThree.length >= 3
     ? [topThree[1], topThree[0], topThree[2]] // 2do, 1ro, 3ro
     : topThree.length === 2
-    ? [topThree[1], topThree[0], null] // 2do, 1ro, vacío
-    : [null, topThree[0], null] // vacío, 1ro, vacío
+      ? [topThree[1], topThree[0], null] // 2do, 1ro, vacío
+      : [null, topThree[0], null] // vacío, 1ro, vacío
 
   return (
     <Card>
@@ -80,7 +80,7 @@ export function RankingCard ({ ranking, currentUserId }: RankingCardProps) {
                       <TrophyIcon className="size-4" />
                     </div>
                   </div>
-                  <div className="w-full bg-gradient-to-b from-yellow-500 to-yellow-600 rounded-t-lg shadow-xl border-2 border-yellow-700 border-b-0 pt-3 pb-4 relative min-h-[120px] md:min-h-[140px]">
+                  <div className="w-full bg-linear-to-b from-yellow-500 to-yellow-600 rounded-t-lg shadow-xl border-2 border-yellow-700 border-b-0 pt-3 pb-4 relative min-h-[120px] md:min-h-[140px]">
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-2xl">🥇</div>
                     <p className="text-sm md:text-base font-bold text-center text-yellow-900 truncate px-1 mt-1">
                       {podiumOrder[1].player.name}
@@ -129,8 +129,7 @@ export function RankingCard ({ ranking, currentUserId }: RankingCardProps) {
 
             {/* Información adicional de cambio neto para top 3 */}
             <div className="flex justify-center gap-4 md:gap-8 mt-4 px-2">
-              {topThree.map((playerStat, index) => {
-                const position = index + 1
+              {topThree.map((playerStat) => {
                 return (
                   <div key={playerStat.player.id} className="flex-1 max-w-[120px]">
                     {playerStat.netChange >= 0 ? (

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
 
 // Lazy load confetti solo cuando se necesita
 const loadConfetti = () => import('canvas-confetti').then(mod => mod.default)
