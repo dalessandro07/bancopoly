@@ -205,7 +205,7 @@ export default function TransactionForm ({
                   ${quickAmount}
                 </Button>
               ))}
-              {isFromBank && (
+              {isFromBank ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -216,7 +216,7 @@ export default function TransactionForm ({
                 >
                   $200
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
 
