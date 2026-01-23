@@ -15,6 +15,7 @@ type LoadingStep = 'idle' | 'conectando' | 'vaciando' | 'completado'
 export default function YapeLogin () {
   const [open, setOpen] = useState(false)
   const [loadingStep, setLoadingStep] = useState<LoadingStep>('idle')
+  const [phoneNumber, setPhoneNumber] = useState('')
 
   const handleConnect = () => {
     setOpen(true)
@@ -30,10 +31,36 @@ export default function YapeLogin () {
     }
 
     if (loadingStep === 'conectando') {
+
+      startTransition(() => {
+        // Iniciar con 9 seguido de números aleatorios
+        const initialRandom = '9' + Array.from({ length: 8 }, () =>
+          Math.floor(Math.random() * 10)
+        ).join('')
+
+        setPhoneNumber(initialRandom)
+      })
+
+      // Animar números cambiando continuamente sin número final
+      // El primer dígito siempre será 9
+      const numberInterval = setInterval(() => {
+        // Generar un nuevo número aleatorio de 9 dígitos, siempre empezando con 9
+        const newRandomNumber = '9' + Array.from({ length: 8 }, () =>
+          Math.floor(Math.random() * 10)
+        ).join('')
+        setPhoneNumber(newRandomNumber)
+      }, 50) // Cambiar cada 50ms para animación rápida y continua
+
       const timer = setTimeout(() => {
+        clearInterval(numberInterval)
         setLoadingStep('vaciando')
       }, 2000) // 2 segundos en "Conectando"
-      return () => clearTimeout(timer)
+
+
+      return () => {
+        clearTimeout(timer)
+        clearInterval(numberInterval)
+      }
     }
 
     if (loadingStep === 'vaciando') {
@@ -206,6 +233,13 @@ export default function YapeLogin () {
               <p className="text-muted-foreground text-lg md:text-xl max-w-md">
                 {stepContent.message}
               </p>
+              {loadingStep === 'conectando' && (
+                <div className="mt-4">
+                  <p className="text-3xl md:text-4xl font-mono font-bold text-[#8b3c99] tracking-wider">
+                    {phoneNumber}
+                  </p>
+                </div>
+              )}
             </div>
 
             {loadingStep === 'conectando' && (
