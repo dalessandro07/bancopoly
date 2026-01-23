@@ -19,6 +19,7 @@ interface PlayersListProps {
   currentPlayerId?: string
   enableRealtime?: boolean
   onPlayerClick?: (playerId: string) => void
+  showSystemPlayers?: boolean // Si es true, muestra banco y parada libre
 }
 
 export default function PlayersList ({
@@ -28,6 +29,7 @@ export default function PlayersList ({
   currentPlayerId,
   enableRealtime = false,
   onPlayerClick,
+  showSystemPlayers = false,
 }: PlayersListProps) {
   // Si enableRealtime es true, usamos el hook de realtime
   // Si no, usamos los players pasados directamente (para cuando se usa dentro del wrapper)
@@ -39,14 +41,17 @@ export default function PlayersList ({
 
   const playersRaw = enableRealtime ? realtimePlayers : initialPlayers
 
-  // Ordenar jugadores: el jugador actual primero, luego los demás
+  // Filtrar y ordenar jugadores: excluir jugadores del sistema (banco y parada libre) si showSystemPlayers es false
+  // El jugador actual primero, luego los demás
   const players = useMemo(() => {
-    return [...playersRaw].sort((a, b) => {
-      if (a.id === currentPlayerId) return -1
-      if (b.id === currentPlayerId) return 1
-      return 0
-    })
-  }, [playersRaw, currentPlayerId])
+    return [...playersRaw]
+      .filter((player) => showSystemPlayers || !player.isSystemPlayer) // Excluir banco y parada libre solo si showSystemPlayers es false
+      .sort((a, b) => {
+        if (a.id === currentPlayerId) return -1
+        if (b.id === currentPlayerId) return 1
+        return 0
+      })
+  }, [playersRaw, currentPlayerId, showSystemPlayers])
 
   const formatBalance = (player: TPlayer) => {
     if (player.isSystemPlayer && player.systemPlayerType === 'bank') {

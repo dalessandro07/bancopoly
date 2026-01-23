@@ -1,10 +1,10 @@
 'use client'
 
-import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
 import { useTableroRealtime } from '@/src/core/hooks/tablero/use-tablero-realtime'
+import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import dynamic from 'next/dynamic'
 import BottomNavigation, { type TabType } from './bottom-navigation'
 import CurrentPlayerBalance from './current-player-balance'
 import PlayersList from './players-list'
@@ -49,7 +49,7 @@ interface TableroRealtimeWrapperProps {
   creator: User
 }
 
-export default function TableroRealtimeWrapper({
+export default function TableroRealtimeWrapper ({
   tableroId,
   tableroName,
   initialPlayers,
@@ -111,7 +111,8 @@ export default function TableroRealtimeWrapper({
   // Cuando el jugador actual es eliminado del tablero
   const handleCurrentPlayerRemoved = useCallback(() => {
     setIsRemovedFromGame(true)
-  }, [])
+    router.push('/')
+  }, [router])
 
   // Cuando el tablero es eliminado
   const handleTableroDeleted = useCallback(() => {
@@ -204,6 +205,7 @@ export default function TableroRealtimeWrapper({
               isCreator={isCreator}
               currentPlayerId={currentPlayerId}
               onPlayerClick={handlePlayerClick}
+              showSystemPlayers={true}
             />
           </div>
 
