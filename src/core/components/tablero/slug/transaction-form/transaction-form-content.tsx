@@ -6,11 +6,12 @@ import { Input } from '@/src/core/components/ui/input'
 import { Label } from '@/src/core/components/ui/label'
 import type { TPlayer } from '@/src/core/lib/db/schema'
 import { useRouter } from 'next/navigation'
-import { memo, useCallback, useMemo, useRef, useTransition } from 'react'
+import { memo, useCallback, useMemo, useRef, useTransition, useState } from 'react'
 import { toast } from 'sonner'
 import { AmountInput } from './amount-input'
 import { PlayerSelector } from './player-selector'
 import { QuickAmountButtons } from './quick-amount-buttons'
+import { TransactionAnimation } from '@/src/core/components/tablero/transaction-animation'
 
 interface TransactionFormContentProps {
   tableroId: string
@@ -46,6 +47,7 @@ function TransactionFormContentComponent ({
   onSuccess,
 }: TransactionFormContentProps) {
   const [isSubmitting, startTransition] = useTransition()
+  const [animationTrigger, setAnimationTrigger] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
   const router = useRouter()
 
@@ -129,6 +131,8 @@ function TransactionFormContentComponent ({
         }
 
         if (result?.success) {
+          // Disparar animación
+          setAnimationTrigger(prev => prev + 1)
           onSuccess()
           router.refresh()
         }
@@ -138,11 +142,13 @@ function TransactionFormContentComponent ({
   )
 
   return (
-    <form
-      ref={formRef}
-      action={handleSubmit}
-      className="flex flex-col gap-4 px-4 pb-8"
-    >
+    <>
+      <TransactionAnimation trigger={animationTrigger > 0} />
+      <form
+        ref={formRef}
+        action={handleSubmit}
+        className="flex flex-col gap-4 px-4 pb-8"
+      >
       <input type="hidden" name="tableroId" value={tableroId} />
 
       <div className="space-y-2">
@@ -201,6 +207,7 @@ function TransactionFormContentComponent ({
         {isLoading ? 'Procesando...' : 'Transferir'}
       </Button>
     </form>
+    </>
   )
 }
 

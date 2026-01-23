@@ -1,3 +1,4 @@
+import AnonymousLogin from '@/src/core/components/auth/anonymous-login'
 import GoogleLogin from '@/src/core/components/auth/google-login'
 import UserMenu from '@/src/core/components/auth/user-menu'
 import FormNewTablero from '@/src/core/components/tablero/form-new-tablero'
@@ -25,9 +26,6 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
             <h1 className="text-5xl font-luckiest-guy bg-linear-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               {APP_NAME}
             </h1>
-            <p className="text-muted-foreground text-sm">
-              {APP_DESCRIPTION}
-            </p>
           </div>
 
           <Card className="border-2 shadow-lg">
@@ -44,15 +42,32 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
                 </div>
               )}
               <GoogleLogin />
-              <p className="text-xs text-center text-muted-foreground px-4">
-                Al continuar, aceptas nuestros términos de servicio y política de privacidad
-              </p>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">O</span>
+                </div>
+              </div>
+              <AnonymousLogin />
             </CardContent>
           </Card>
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <p className="text-xs text-muted-foreground">
-              Plataforma segura y confiable para gestionar tus juegos
+              {APP_DESCRIPTION}
+            </p>
+            <p className="text-xs text-muted-foreground/60">
+              Desarrollado por{' '}
+              <a
+                href="https://alessandrorios.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-muted-foreground transition-colors underline underline-offset-2"
+              >
+                AR
+              </a>
             </p>
           </div>
         </div>
@@ -80,9 +95,17 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
       <section className='flex flex-col grow'>
         <div className='flex flex-col gap-5'>
           <div className='flex flex-col gap-3'>
-            <div className='flex-1'>
-              <FormNewTablero />
-            </div>
+            {session.user.isAnonymous ? (
+              <div className="bg-muted/50 rounded-2xl p-6 border-2 border-muted text-center">
+                <p className="text-muted-foreground">
+                  Como invitado, puedes unirte a tableros existentes usando el código QR o el enlace del tablero.
+                </p>
+              </div>
+            ) : (
+              <div className='flex-1'>
+                <FormNewTablero />
+              </div>
+            )}
             <QRReader />
           </div>
           <Suspense fallback={<div>Cargando tableros...</div>}>

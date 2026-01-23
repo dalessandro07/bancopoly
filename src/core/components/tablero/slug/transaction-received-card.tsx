@@ -1,5 +1,7 @@
 'use client'
 
+import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 
 // Lazy load confetti solo cuando se necesita
@@ -128,6 +130,43 @@ export default function TransactionReceivedCard ({
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center pointer-events-none gap-6 animate-in fade-in duration-300"
     >
+      {/* Animación del logo pasando de derecha a izquierda */}
+      {isVisible && (
+        <motion.div
+          key="monopoly-logo-animation"
+          initial={{ x: '100vw', y: '-50%', opacity: 0 }}
+          animate={{
+            x: '-100vw',
+            y: '-50%',
+            opacity: [0, 1, 1, 0]
+          }}
+          exit={{ opacity: 0 }}
+          transition={{
+            duration: 2.5,
+            ease: 'easeInOut',
+            opacity: {
+              times: [0, 0.15, 0.85, 1],
+              duration: 2.5
+            },
+          }}
+          className="fixed top-1/2 right-0 pointer-events-none"
+          style={{
+            willChange: 'transform, opacity',
+            zIndex: 100
+          }}
+        >
+          <Image
+            src="/monopoly-logo.png"
+            alt="Monopoly Logo"
+            width={120}
+            height={120}
+            className="object-contain drop-shadow-2xl"
+            priority
+            unoptimized
+          />
+        </motion.div>
+      )}
+
       {/* Billetes animados - solo billetes, sin fondo */}
       <div
         className="flex justify-center items-center gap-2 flex-wrap animate-in zoom-in-95 duration-500"

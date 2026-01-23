@@ -2,7 +2,7 @@ import { db } from '@/src/core/lib/db'
 import * as schema from '@/src/core/lib/db/schema'
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { oneTap } from "better-auth/plugins"
+import { oneTap, anonymous } from "better-auth/plugins"
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
@@ -16,5 +16,5 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     },
   },
-  plugins: [oneTap()],
+  plugins: [oneTap(), anonymous()],
 })

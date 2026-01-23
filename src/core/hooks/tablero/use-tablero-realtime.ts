@@ -224,16 +224,21 @@ export function useTableroRealtime ({
     const isFromFreeParking = fromPlayer?.isSystemPlayer && fromPlayer?.systemPlayerType === 'free_parking'
     const isToFreeParking = toPlayer?.isSystemPlayer && toPlayer?.systemPlayerType === 'free_parking'
 
-    const involvesSystemPlayer = isFromBank || isToBank || isFromFreeParking || isToFreeParking
+    // Obtener nombres de los jugadores
+    const fromName = isFromBank
+      ? 'Banco'
+      : isFromFreeParking
+        ? 'Parada Libre'
+        : fromPlayer?.name || 'Desconocido'
+
+    const toName = isToBank
+      ? 'Banco'
+      : isToFreeParking
+        ? 'Parada Libre'
+        : toPlayer?.name || 'Desconocido'
 
     // Mostrar card animada y confetti para el receptor
     if (isReceiver) {
-      const fromName = isFromBank
-        ? 'Banco'
-        : isFromFreeParking
-          ? 'Parada Libre'
-          : fromPlayer?.name || 'Desconocido'
-
       // Mostrar card animada inmersiva
       onTransactionReceived?.({
         amount: newTransaction.amount,
@@ -246,35 +251,13 @@ export function useTableroRealtime ({
         position: 'top-center',
         duration: 2000,
       })
-    }
-
-    // Mostrar toast para el enviador
-    if (isSender) {
-      const toName = isToBank
-        ? 'Banco'
-        : isToFreeParking
-          ? 'Parada Libre'
-          : toPlayer?.name || 'Desconocido'
-
+    } else if (isSender) {
+      // Mostrar toast para el enviador
       toast.info(`Enviaste $${newTransaction.amount.toLocaleString()} a ${toName}`, {
         position: 'top-center',
       })
-    }
-
-    // Si involucra banco o parada libre, mostrar toast para todos los demás jugadores
-    if (involvesSystemPlayer && !isSender && !isReceiver) {
-      const fromName = isFromBank
-        ? 'Banco'
-        : isFromFreeParking
-          ? 'Parada Libre'
-          : fromPlayer?.name || 'Desconocido'
-
-      const toName = isToBank
-        ? 'Banco'
-        : isToFreeParking
-          ? 'Parada Libre'
-          : toPlayer?.name || 'Desconocido'
-
+    } else {
+      // Mostrar toast para todas las demás transacciones (públicas para todos)
       const action = isFromBank || isFromFreeParking ? 'pagó' : 'envió'
       toast.info(`${fromName} ${action} $${newTransaction.amount.toLocaleString()} a ${toName}`, {
         position: 'top-center',

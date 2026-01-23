@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/src/core/lib/db'
-import { player, tablero, type TTablero } from '@/src/core/lib/db/schema'
+import { player, tablero } from '@/src/core/lib/db/schema'
 import { auth } from '@/src/core/lib/auth'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
@@ -21,19 +21,31 @@ export async function actionCreateTablero (initialState: unknown, formData: Form
     return { success: false, error: 'Usuario no autenticado' }
   }
 
+  // Verificar que el usuario no sea anónimo
+  if (session.user.isAnonymous === true) {
+    return { success: false, error: 'Los usuarios invitados no pueden crear tableros. Por favor, inicia sesión con una cuenta para crear tableros.' }
+  }
+
   //* 2. Obtener el nombre del tablero
   const name = formData.get('name') as string
   const userId = session.user.id
 
   //* 3. Crear el tablero
-  let newTablero: TTablero[] = []
+  let newTableroId: string | null = null
+  let success = false
 
   try {
-    newTablero = await db.insert(tablero).values({
+    const newTablero = await db.insert(tablero).values({
       id: crypto.randomUUID(),
       name,
       userId,
     }).returning()
+
+    if (!newTablero[0]) {
+      return { success: false, error: 'Error al crear el tablero' }
+    }
+
+    newTableroId = newTablero[0].id
 
     // Crear jugadores del sistema (Banco y Parada Libre) y el jugador del creador
     const systemPlayers = await db.insert(player).values([
@@ -71,12 +83,16 @@ export async function actionCreateTablero (initialState: unknown, formData: Form
     for (const newPlayer of systemPlayers) {
       await emitPlayerInserted(newPlayer)
     }
+
+    success = true
   } catch (error) {
     console.error(error)
-    return { error: 'Error al crear el tablero' }
+    return { success: false, error: 'Error al crear el tablero' }
   } finally {
     revalidatePath('/')
-    redirect(`/tablero/${newTablero[0].id}`)
+    if (success && newTableroId) {
+      redirect(`/tablero/${newTableroId}`)
+    }
   }
 }
 

@@ -1,6 +1,6 @@
 // Re-exportar todas las funciones desde los módulos organizados
 export {
-  actionGetPlayerTransactions, actionGetTableroById, actionGetTablerosFromUser, actionGetTableroStats
+  actionGetAllTableroTransactions, actionGetPlayerTransactions, actionGetTableroById, actionGetTablerosFromUser, actionGetTableroStats
 } from './select'
 
 export {

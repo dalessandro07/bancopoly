@@ -1,4 +1,4 @@
-import { actionGetPlayerTransactions, actionGetTableroById } from '@/src/core/actions/tablero'
+import { actionGetAllTableroTransactions, actionGetTableroById } from '@/src/core/actions/tablero'
 import { auth } from '@/src/core/lib/auth'
 import type { TPlayer, TTransaction, User } from '@/src/core/lib/db/schema'
 import { headers } from 'next/headers'
@@ -32,6 +32,16 @@ export default async function TableroPage({ params }: { params: Promise<{ slug: 
 
   const tablero = await actionGetTableroById(slug)
 
+  // Si hay un error o el tablero no existe, redirigir a la página principal
+  if ('success' in tablero && tablero.success === false) {
+    redirect('/')
+  }
+
+  // Verificar que el tablero existe
+  if (!tablero.tablero) {
+    redirect('/')
+  }
+
   // Si el tablero está cerrado, redirigir a resultados
   if (tablero.tablero?.isEnded === 1) {
     redirect(`/tablero/${slug}/resultados`)
@@ -41,10 +51,10 @@ export default async function TableroPage({ params }: { params: Promise<{ slug: 
   const isPlayer = tablero.players?.some((player) => player.userId === session?.user?.id)
   const currentPlayer = tablero.players?.find((player) => player.userId === session?.user?.id)
 
-  // Obtener transacciones del jugador si está en el tablero
+  // Obtener todas las transacciones del tablero (públicas para todos)
   let playerTransactions: EnrichedTransaction[] = []
-  if (isPlayer && currentPlayer?.id) {
-    const transactionsResult = await actionGetPlayerTransactions(slug, currentPlayer.id)
+  if (isPlayer) {
+    const transactionsResult = await actionGetAllTableroTransactions(slug)
     if (transactionsResult.success && transactionsResult.data) {
       playerTransactions = transactionsResult.data
     }

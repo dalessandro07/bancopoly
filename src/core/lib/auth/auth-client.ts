@@ -1,4 +1,4 @@
-import { oneTapClient } from "better-auth/client/plugins"
+import { oneTapClient, anonymousClient } from "better-auth/client/plugins"
 import { createAuthClient } from "better-auth/react"
 
 export const authClient = createAuthClient({
@@ -12,7 +12,8 @@ export const authClient = createAuthClient({
         baseDelay: 1500,
         maxAttempts: 5
       },
-    })
+    }),
+    anonymousClient()
   ]
 })
 

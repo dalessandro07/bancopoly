@@ -27,7 +27,18 @@ export default function FormJoinTablero({ tableroId }: { tableroId: string }) {
           </p>
         </div>
 
-        {session?.user ? (
+        {isPending ? (
+          <div className="space-y-6">
+            <div className="bg-card border rounded-xl p-6 text-center">
+              <div className="flex flex-col items-center justify-center gap-4">
+                <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-muted-foreground">
+                  Verificando sesión...
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : session?.user ? (
           <form action={formAction} className="space-y-6">
             <input type="hidden" name="tableroId" value={tableroId} />
 

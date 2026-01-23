@@ -90,6 +90,92 @@ export async function actionGetTableroById (slug: string) {
 }
 
 /**
+ * Obtiene todas las transacciones del tablero (públicas para todos)
+ */
+export async function actionGetAllTableroTransactions (tableroId: string) {
+  //* 1. Obtener la sesión del usuario
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+
+  if (!session?.user?.id) {
+    return { success: false, error: 'Usuario no autenticado' }
+  }
+
+  try {
+    //* 2. Verificar que el usuario es jugador del tablero
+    const userPlayer = await db.select().from(player).where(
+      and(
+        eq(player.tableroId, tableroId),
+        eq(player.userId, session.user.id)
+      )
+    )
+
+    if (!userPlayer[0]) {
+      return { success: false, error: 'No eres jugador de este tablero' }
+    }
+
+    //* 3. Obtener todas las transacciones del tablero
+    const transactions = await db
+      .select({
+        id: transaction.id,
+        tableroId: transaction.tableroId,
+        fromPlayerId: transaction.fromPlayerId,
+        toPlayerId: transaction.toPlayerId,
+        amount: transaction.amount,
+        type: transaction.type,
+        description: transaction.description,
+        createdAt: transaction.createdAt,
+      })
+      .from(transaction)
+      .where(eq(transaction.tableroId, tableroId))
+      .orderBy(desc(transaction.createdAt))
+
+    //* 4. Obtener información de los jugadores involucrados
+    const playerIds = new Set<string>()
+    transactions.forEach(t => {
+      if (t.fromPlayerId) playerIds.add(t.fromPlayerId)
+      if (t.toPlayerId) playerIds.add(t.toPlayerId)
+    })
+
+    const playersData = await db
+      .select({
+        player: player,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        },
+      })
+      .from(player)
+      .leftJoin(user, eq(player.userId, user.id))
+      .where(
+        or(
+          ...Array.from(playerIds).map(id => eq(player.id, id))
+        )
+      )
+
+    const playersMap = new Map(playersData.map(({ player, user }) => [player.id, {
+      ...player,
+      user: user || null,
+    }]))
+
+    //* 5. Enriquecer las transacciones con información de los jugadores
+    const enrichedTransactions = transactions.map(t => ({
+      ...t,
+      fromPlayer: t.fromPlayerId ? playersMap.get(t.fromPlayerId) : null,
+      toPlayer: t.toPlayerId ? playersMap.get(t.toPlayerId) : null,
+    }))
+
+    return { success: true, data: enrichedTransactions }
+  } catch (error) {
+    console.error(error)
+    return { success: false, error: 'Error al obtener las transacciones' }
+  }
+}
+
+/**
  * Obtiene las transacciones de un jugador específico
  */
 export async function actionGetPlayerTransactions (tableroId: string, playerId: string) {

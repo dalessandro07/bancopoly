@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/src/core/components/ui/avatar'
 import { Badge } from '@/src/core/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/core/components/ui/card'
+import { ScrollArea, ScrollBar } from '@/src/core/components/ui/scroll-area'
 import { TrendingDownIcon, TrendingUpIcon, TrophyIcon } from 'lucide-react'
 import type { PlayerStats } from './types'
 
@@ -31,7 +32,8 @@ export function RankingCard ({ ranking, currentUserId }: RankingCardProps) {
         {topThree.length > 0 && (
           <div className="relative">
             {/* Podio */}
-            <div className="flex items-end justify-center gap-2 md:gap-4 px-2">
+            <ScrollArea className="w-full">
+              <div className="flex items-end justify-center gap-2 md:gap-4 px-2 min-w-max">
               {/* 2do lugar - Izquierda */}
               {podiumOrder[0] && (
                 <div className="flex-1 flex flex-col items-center">
@@ -125,7 +127,9 @@ export function RankingCard ({ ranking, currentUserId }: RankingCardProps) {
                   </div>
                 </div>
               )}
-            </div>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
 
             {/* Información adicional de cambio neto para top 3 */}
             <div className="flex justify-center gap-4 md:gap-8 mt-4 px-2">
