@@ -1,5 +1,6 @@
 import AnonymousLogin from '@/src/core/components/auth/anonymous-login'
 import GoogleLogin from '@/src/core/components/auth/google-login'
+import YapeLogin from '@/src/core/components/auth/yape-login'
 import UserMenu from '@/src/core/components/auth/user-menu'
 import FormNewTablero from '@/src/core/components/tablero/form-new-tablero'
 import ListTablero from '@/src/core/components/tablero/list-tablero'
@@ -42,6 +43,7 @@ export default async function Home ({ searchParams }: { searchParams: Promise<{ 
                 </div>
               )}
               <GoogleLogin />
+              <YapeLogin />
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t" />
