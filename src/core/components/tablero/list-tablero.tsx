@@ -76,11 +76,17 @@ export default async function ListTablero () {
     </div>
   )
 
+  const isAnonymous = session?.user?.isAnonymous ?? false
+  const title = isAnonymous ? 'Tableros' : 'Mis tableros'
+  const emptyMessage = isAnonymous
+    ? 'No te has unido a ningún tablero aún'
+    : 'Crea tu primer tablero para comenzar a jugar'
+
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
         <LayoutGridIcon className="size-5 text-primary" />
-        <h2 className="text-xl font-bold">Mis tableros</h2>
+        <h2 className="text-xl font-bold">{title}</h2>
         <span className="text-sm text-muted-foreground">({tableros.length})</span>
       </div>
 
@@ -116,7 +122,7 @@ export default async function ListTablero () {
           </TabsContent>
         </Tabs>
       ) : (
-        renderEmptyState('Crea tu primer tablero para comenzar a jugar')
+        renderEmptyState(emptyMessage)
       )}
     </section>
   )
