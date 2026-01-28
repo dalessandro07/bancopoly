@@ -1,17 +1,17 @@
 'use client'
 
 import { actionCreateTransaction } from '@/src/core/actions/tablero'
+import { TransactionAnimation } from '@/src/core/components/tablero/transaction-animation'
 import { Button } from '@/src/core/components/ui/button'
 import { Input } from '@/src/core/components/ui/input'
 import { Label } from '@/src/core/components/ui/label'
 import type { TPlayer } from '@/src/core/lib/db/schema'
 import { useRouter } from 'next/navigation'
-import { memo, useCallback, useMemo, useRef, useTransition, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { AmountInput } from './amount-input'
 import { PlayerSelector } from './player-selector'
 import { QuickAmountButtons } from './quick-amount-buttons'
-import { TransactionAnimation } from '@/src/core/components/tablero/transaction-animation'
 
 interface TransactionFormContentProps {
   tableroId: string
@@ -149,64 +149,80 @@ function TransactionFormContentComponent ({
         action={handleSubmit}
         className="flex flex-col gap-4 px-4 pb-8"
       >
-      <input type="hidden" name="tableroId" value={tableroId} />
+        <input type="hidden" name="tableroId" value={tableroId} />
 
-      <div className="space-y-2">
-        <AmountInput
-          amount={amount}
-          onAmountChange={onAmountChange}
-          disabled={isLoading}
-        />
-        <QuickAmountButtons
-          onQuickAmount={handleQuickAmount}
-          disabled={isLoading}
-          showBankAmount={!!isFromBank}
-        />
-      </div>
+        <div className="space-y-2">
+          <AmountInput
+            amount={amount}
+            onAmountChange={onAmountChange}
+            disabled={isLoading}
+          />
+          <QuickAmountButtons
+            onQuickAmount={handleQuickAmount}
+            disabled={isLoading}
+            showBankAmount={!!isFromBank}
+          />
+        </div>
 
-      {isCreator ? (
-        <PlayerSelector
-          label="Desde:"
-          name="fromPlayerId"
-          value={fromPlayerId}
-          players={fromPlayers}
-          currentPlayerId={currentPlayerId}
-          onValueChange={handleFromPlayerChange}
-          disabled={isLoading}
-          required
-        />
-      ) : (
-        <input type="hidden" name="fromPlayerId" value={currentPlayerId || ''} />
-      )}
+        {isCreator ? (
+          <>
+            <PlayerSelector
+              label="Desde:"
+              name="fromPlayerId"
+              value={fromPlayerId}
+              players={fromPlayers}
+              currentPlayerId={currentPlayerId}
+              onValueChange={handleFromPlayerChange}
+              disabled={isLoading}
+              required
+            />
 
-      <PlayerSelector
-        label="Hacia:"
-        name="toPlayerId"
-        value={toPlayerId}
-        players={toPlayers}
-        currentPlayerId={currentPlayerId}
-        onValueChange={handleToPlayerChange}
-        disabled={isLoading}
-        required
-      />
+            <PlayerSelector
+              label="Hacia:"
+              name="toPlayerId"
+              value={toPlayerId}
+              players={toPlayers}
+              currentPlayerId={currentPlayerId}
+              onValueChange={handleToPlayerChange}
+              disabled={isLoading}
+              required
+            />
+          </>
+        ) : (
+          <>
+            <input type="hidden" name="fromPlayerId" value={currentPlayerId || ''} />
+            <input type="hidden" name="toPlayerId" value={toPlayerId || ''} />
+          </>
+        )}
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Descripción (opcional):</Label>
-        <Input
-          type="text"
-          id="description"
-          name="description"
-          disabled={isLoading}
-          placeholder="Concepto de la transferencia"
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
-        />
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="description">Descripción (opcional):</Label>
+          <Input
+            type="text"
+            id="description"
+            name="description"
+            list="description-options"
+            disabled={isLoading}
+            placeholder="Concepto de la transferencia"
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+          />
+          <datalist id="description-options">
+            <option value="Pago de alquiler" />
+            <option value="Impuestos" />
+            <option value="Multa" />
+            <option value="Pago de servicios" />
+            <option value="Compra de propiedad" />
+            <option value="Venta de propiedad" />
+            <option value="Pago de hospital" />
+            <option value="Pago de cárcel" />
+          </datalist>
+        </div>
 
-      <Button type="submit" disabled={isLoading} className="w-full" size="lg">
-        {isLoading ? 'Procesando...' : 'Transferir'}
-      </Button>
-    </form>
+        <Button type="submit" disabled={isLoading} className="w-full" size="lg">
+          {isLoading ? 'Procesando...' : 'Transferir'}
+        </Button>
+      </form>
     </>
   )
 }

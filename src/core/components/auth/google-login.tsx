@@ -1,7 +1,6 @@
 'use client'
 
-import { authClient, signInSocial } from "@/src/core/lib/auth/auth-client"
-import { useEffect } from 'react'
+import { signInSocial } from "@/src/core/lib/auth/auth-client"
 import { toast } from "sonner"
 import { Button } from "../ui/button"
 
@@ -14,13 +13,6 @@ export default function GoogleLogin ({ redirectTo = '/' }: { redirectTo?: string
       toast.error("Error al ingresar con Google")
     }
   }
-
-  useEffect(() => {
-    async function initOneTap () {
-      await authClient.oneTap()
-    }
-    initOneTap()
-  }, [])
 
   return (
     <Button
