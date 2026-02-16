@@ -6,6 +6,13 @@ import { useCallback, useEffect, useState } from 'react'
 
 const TABLERO_CONFIRM_BACK = 'tableroConfirmBack'
 
+/** Si está definido, al pulsar atrás se llama a esta función y no se muestra el diálogo de salir (p. ej. cerrar un drawer). */
+let backConsumer: (() => void) | null = null
+
+export function setBackConsumer (fn: (() => void) | null): void {
+  backConsumer = fn
+}
+
 /**
  * Intercepta el botón atrás del navegador/dispositivo y muestra confirmación
  * antes de salir de la página actual (p. ej. del tablero).
@@ -41,13 +48,18 @@ export function useConfirmBack (enabled = true) {
       if (!enabled) return
       const state = event.state as Record<string, unknown> | null
       if (state?.[TABLERO_CONFIRM_BACK]) {
-        setShowConfirm(true)
+        if (backConsumer) {
+          backConsumer()
+          cancelLeave()
+        } else {
+          setShowConfirm(true)
+        }
       }
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [enabled])
+  }, [enabled, cancelLeave])
 
   return { showConfirm, setShowConfirm, confirmLeave, cancelLeave }
 }

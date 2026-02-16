@@ -7,6 +7,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/src/core/components/ui/drawer'
+import { setBackConsumer } from '@/src/core/hooks/use-confirm-back'
 import type { TPlayer } from '@/src/core/lib/db/schema'
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import { TransactionFormContent } from './transaction-form/transaction-form-content'
@@ -70,6 +71,15 @@ export default function TransactionForm ({
     },
     [preselectedToPlayerId, onOpenChange]
   )
+
+  // Al pulsar atrás con el drawer abierto, cerrar el drawer en lugar de mostrar "¿Salir del tablero?"
+  useEffect(() => {
+    if (isOpen) {
+      setBackConsumer(() => () => handleClose(false))
+      return () => setBackConsumer(null)
+    }
+    setBackConsumer(null)
+  }, [isOpen, handleClose])
 
   // Handler para éxito de la transacción
   const handleSuccess = useCallback(() => {
