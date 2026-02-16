@@ -264,9 +264,22 @@ export function useTableroRealtime ({
       })
     }
 
+    // Actualizar balances en tiempo real para que el sender y el receptor vean el saldo al instante
+    const fromId = newTransaction.fromPlayerId
+    const toId = newTransaction.toPlayerId
+    const amount = newTransaction.amount
+    if (fromId && toId) {
+      const updatedPlayers = currentPlayers.map((p) => {
+        if (p.id === fromId) return { ...p, balance: p.balance - amount }
+        if (p.id === toId) return { ...p, balance: p.balance + amount }
+        return p
+      })
+      onPlayersChange(updatedPlayers)
+    }
+
     // Pasar la nueva transacción para que el wrapper la enriquezca y agregue
     onTransactionsChange(newTransaction)
-  }, [tableroId, currentPlayerId, onTransactionsChange, onTransactionReceived])
+  }, [tableroId, currentPlayerId, onPlayersChange, onTransactionsChange, onTransactionReceived])
 
   const handleTableroUpdated = useCallback((data: { id: string; isEnded: boolean }) => {
     if (data.id !== tableroId) return
