@@ -37,14 +37,10 @@ function PlayerSelectorComponent({
 
   const formatPlayerOption = useMemo(
     () => (player: TPlayer) => {
-      // Mostrar balance si es jugador del sistema o el jugador actual
-      if (player.isSystemPlayer || player.id === currentPlayerId) {
-        return `${player.name} (${formatBalance(player)})`
-      }
-      // Ocultar balance de otros jugadores
-      return player.name
+      // Los montos de todos los jugadores son visibles para todos
+      return `${player.name} (${formatBalance(player)})`
     },
-    [currentPlayerId]
+    []
   )
 
   return (

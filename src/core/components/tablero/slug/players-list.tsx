@@ -60,13 +60,9 @@ export default function PlayersList ({
     return `$${player.balance}`
   }
 
-  const shouldShowBalance = (player: TPlayer) => {
-    // Mostrar balance si es jugador del sistema (Banco, Parada Libre)
-    if (player.isSystemPlayer) return true
-    // Mostrar balance si es el jugador actual
-    if (player.id === currentPlayerId) return true
-    // Ocultar balance de otros jugadores
-    return false
+  const shouldShowBalance = (_player: TPlayer) => {
+    // Los montos de todos los jugadores son visibles para todos
+    return true
   }
 
   const handlePlayerClick = (playerId: string, e: React.MouseEvent) => {
