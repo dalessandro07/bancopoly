@@ -217,6 +217,32 @@ function TransactionFormContentComponent ({
             <option value="Pago de hospital" />
             <option value="Pago de cárcel" />
           </datalist>
+          <div className="flex gap-2 flex-wrap">
+            {(
+              [
+                { label: 'Renta', value: 'Renta' },
+                { label: 'Compra', value: 'Compra de propiedad' },
+                { label: 'Venta', value: 'Venta de propiedad' },
+                { label: 'Multa', value: 'Multa' },
+                { label: 'Impuestos', value: 'Impuestos' },
+                { label: 'Servicios', value: 'Pago de servicios' },
+                { label: 'Hospital', value: 'Pago de hospital' },
+                { label: 'Cárcel', value: 'Pago de cárcel' },
+              ] as const
+            ).map(({ label, value }) => (
+              <Button
+                key={value}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onDescriptionChange(value)}
+                disabled={isLoading}
+                className="text-xs"
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         <Button type="submit" disabled={isLoading} className="w-full" size="lg">
