@@ -8,6 +8,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/src/core/components/ui/drawer'
+import { ScrollArea } from '@/src/core/components/ui/scroll-area'
 import { setBackConsumer } from '@/src/core/hooks/use-confirm-back'
 import type { TPlayer } from '@/src/core/lib/db/schema'
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
@@ -125,7 +126,8 @@ export default function TransactionForm ({
           )}
         </DrawerHeader>
 
-        <TransactionFormContent
+        <ScrollArea className="flex-1 min-h-0">
+          <TransactionFormContent
           tableroId={tableroId}
           players={players}
           currentPlayerId={currentPlayerId}
@@ -141,6 +143,7 @@ export default function TransactionForm ({
           onDescriptionChange={setDescription}
           onSuccess={handleSuccess}
         />
+        </ScrollArea>
       </DrawerContent>
     </Drawer>
   )
