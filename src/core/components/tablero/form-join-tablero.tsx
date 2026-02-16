@@ -15,7 +15,9 @@ import { toast } from 'sonner'
 const LOADING_MESSAGES = [
   'Buscando sala...',
   'Preparando dinero...',
-  'Configurando tablero...'
+  'Configurando tablero...',
+  'Preparando juego...',
+  'Esperando a los demás...',
 ]
 
 function useRotatingMessage (messages: string[], interval = 2000) {

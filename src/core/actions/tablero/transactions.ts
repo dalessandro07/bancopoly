@@ -1,12 +1,14 @@
 'use server'
 
 import { db } from '@/src/core/lib/db'
-import { player, transaction } from '@/src/core/lib/db/schema'
+import { player, tablero, transaction } from '@/src/core/lib/db/schema'
 import { auth } from '@/src/core/lib/auth'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { eq, and } from 'drizzle-orm'
-import { emitTransactionInserted, emitPlayerUpdated } from './utils'
+import { emitTransactionInserted } from './utils'
+
+const MAX_AMOUNT = 999_999_999
 
 /**
  * Crea una nueva transacción entre dos jugadores
@@ -25,39 +27,37 @@ export async function actionCreateTransaction (initialState: unknown, formData: 
   const tableroId = formData.get('tableroId') as string
   const fromPlayerId = formData.get('fromPlayerId') as string
   const toPlayerId = formData.get('toPlayerId') as string
-  const amount = parseInt(formData.get('amount') as string)
-  const description = formData.get('description') as string
+  const amountRaw = parseInt((formData.get('amount') as string) ?? '', 10)
+  const description = (formData.get('description') as string)?.trim() || null
 
-  //* 3. Validaciones
-  if (!tableroId || !fromPlayerId || !toPlayerId || !amount) {
+  if (!tableroId || !fromPlayerId || !toPlayerId) {
     return { success: false, error: 'Faltan datos requeridos' }
   }
-
-  if (amount <= 0) {
+  if (Number.isNaN(amountRaw) || amountRaw <= 0) {
     return { success: false, error: 'El monto debe ser mayor a 0' }
   }
+  if (amountRaw > MAX_AMOUNT) {
+    return { success: false, error: `El monto no puede superar $${MAX_AMOUNT.toLocaleString()}` }
+  }
+  const amount = amountRaw
 
   if (fromPlayerId === toPlayerId) {
     return { success: false, error: 'No puedes transferir dinero a ti mismo' }
   }
 
-  //* 4. Verificar que el usuario es jugador del tablero
-  const userPlayer = await db.select().from(player).where(
-    and(
-      eq(player.tableroId, tableroId),
-      eq(player.userId, session.user.id)
-    )
-  )
+  const [userPlayer, fromPlayer, toPlayer, tableroData] = await Promise.all([
+    db.select().from(player).where(and(eq(player.tableroId, tableroId), eq(player.userId, session.user.id))),
+    db.select().from(player).where(eq(player.id, fromPlayerId)),
+    db.select().from(player).where(eq(player.id, toPlayerId)),
+    db.select().from(tablero).where(eq(tablero.id, tableroId)),
+  ])
 
   if (!userPlayer[0]) {
     return { success: false, error: 'No eres jugador de este tablero' }
   }
-
-  //* 5. Obtener jugadores involucrados
-  const [fromPlayer, toPlayer] = await Promise.all([
-    db.select().from(player).where(eq(player.id, fromPlayerId)),
-    db.select().from(player).where(eq(player.id, toPlayerId)),
-  ])
+  if (!tableroData[0] || tableroData[0].isEnded === 1) {
+    return { success: false, error: 'El tablero no existe o está cerrado' }
+  }
 
   if (!fromPlayer[0] || !toPlayer[0]) {
     return { success: false, error: 'Jugador no encontrado' }
@@ -68,51 +68,51 @@ export async function actionCreateTransaction (initialState: unknown, formData: 
     return { success: false, error: 'Los jugadores deben pertenecer al mismo tablero' }
   }
 
-  //* 7. Verificar que el jugador origen tiene suficiente dinero (excepto el Banco)
+  const isCreator = tableroData[0].userId === session.user.id
+  const isFromSystemPlayer = fromPlayer[0].isSystemPlayer === 1
+  const isFromOwnPlayer = fromPlayer[0].userId === session.user.id
+
+  if (!isFromSystemPlayer && !isFromOwnPlayer) {
+    return { success: false, error: 'No tienes permiso para transferir desde ese jugador' }
+  }
+  if (isFromSystemPlayer && !isCreator) {
+    return { success: false, error: 'Solo el creador puede usar el Banco o Parada Libre como origen' }
+  }
   if (fromPlayer[0].isSystemPlayer !== 1 && fromPlayer[0].balance < amount) {
     return { success: false, error: 'Saldo insuficiente' }
   }
 
-  //* 8. Realizar la transacción
   try {
-    // Actualizar balances
-    const [updatedFromPlayer, updatedToPlayer] = await Promise.all([
-      db.update(player)
+    const newTransaction = await db.transaction(async (tx) => {
+      const [updatedFromPlayer, updatedToPlayer] = await Promise.all([
+        tx.update(player)
         .set({ balance: fromPlayer[0].balance - amount })
         .where(eq(player.id, fromPlayerId))
         .returning(),
-      db.update(player)
-        .set({ balance: toPlayer[0].balance + amount })
-        .where(eq(player.id, toPlayerId))
-        .returning(),
-    ])
+        tx.update(player)
+          .set({ balance: toPlayer[0].balance + amount })
+          .where(eq(player.id, toPlayerId))
+          .returning(),
+      ])
 
-    // Registrar la transacción (incluir saldos después de la transferencia para el historial)
-    const newTransaction = await db.insert(transaction).values({
-      id: crypto.randomUUID(),
-      tableroId,
-      fromPlayerId,
-      toPlayerId,
-      amount,
-      type: 'transfer',
-      description: description || null,
-      fromBalance: updatedFromPlayer[0].balance,
-      toBalance: updatedToPlayer[0].balance,
-      createdAt: Date.now(),
-    }).returning()
+      const [inserted] = await tx.insert(transaction).values({
+        id: crypto.randomUUID(),
+        tableroId,
+        fromPlayerId,
+        toPlayerId,
+        amount,
+        type: 'transfer',
+        description,
+        fromBalance: updatedFromPlayer[0].balance,
+        toBalance: updatedToPlayer[0].balance,
+        createdAt: Date.now(),
+      }).returning()
 
-    // Emitir eventos de realtime
-    if (newTransaction[0]) {
-      await emitTransactionInserted(newTransaction[0])
-    }
+      return inserted
+    })
 
-    // Emitir eventos de actualización de jugadores
-    if (updatedFromPlayer[0]) {
-      await emitPlayerUpdated(updatedFromPlayer[0])
-    }
-
-    if (updatedToPlayer[0]) {
-      await emitPlayerUpdated(updatedToPlayer[0])
+    if (newTransaction) {
+      await emitTransactionInserted(newTransaction)
     }
 
     // Revalidar la ruta para actualizar el contenido del usuario que hace la transacción

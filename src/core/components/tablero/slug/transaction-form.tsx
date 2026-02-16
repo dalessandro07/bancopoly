@@ -1,5 +1,6 @@
 'use client'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/src/core/components/ui/avatar'
 import {
   Drawer,
   DrawerContent,
@@ -9,17 +10,20 @@ import {
 } from '@/src/core/components/ui/drawer'
 import { setBackConsumer } from '@/src/core/hooks/use-confirm-back'
 import type { TPlayer } from '@/src/core/lib/db/schema'
-import { useCallback, useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { TransactionFormContent } from './transaction-form/transaction-form-content'
+
+type PlayerWithUser = TPlayer & {
+  user?: { id: string; name: string; email: string; image: string | null } | null
+}
 
 interface TransactionFormProps {
   tableroId: string
-  players: TPlayer[]
+  players: PlayerWithUser[]
   currentPlayerId?: string
   isCreator?: boolean
   preselectedToPlayerId?: string
   onOpenChange?: (open: boolean) => void
-  onTransactionSuccess?: (amount: number, fromPlayerId: string, toPlayerId: string) => void
 }
 
 export default function TransactionForm ({
@@ -29,7 +33,6 @@ export default function TransactionForm ({
   isCreator = false,
   preselectedToPlayerId,
   onOpenChange,
-  onTransactionSuccess,
 }: TransactionFormProps) {
   const [fromPlayerId, setFromPlayerId] = useState<string>('')
   const [toPlayerId, setToPlayerId] = useState<string>(() => preselectedToPlayerId || '')
@@ -95,15 +98,31 @@ export default function TransactionForm ({
     }
   }, [onOpenChange])
 
+  const toPlayer = useMemo(
+    () => (toPlayerId ? players.find((p) => p.id === toPlayerId) : null),
+    [players, toPlayerId]
+  )
 
   return (
     <Drawer open={isOpen} onOpenChange={handleClose} direction="bottom">
-      <DrawerContent className="rounded-t-xl border-t">
-        <DrawerHeader className="text-center">
+      <DrawerContent className="rounded-t-xl border-t pb-5 h-full">
+        <DrawerHeader className="text-center space-y-2">
           <DrawerTitle>Transferir dinero</DrawerTitle>
-          <DrawerDescription>
-            Envía dinero a otro jugador del tablero
-          </DrawerDescription>
+          {toPlayer ? (
+            <div className="flex items-center justify-center gap-3 py-3 px-4 rounded-lg bg-muted/50 border">
+              <Avatar className="size-14 ring-2 ring-background">
+                <AvatarImage src={(toPlayer as PlayerWithUser).user?.image ?? undefined} alt={toPlayer.name} />
+                <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                  {toPlayer.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <p className="font-semibold text-lg">{toPlayer.name}</p>
+            </div>
+          ) : (
+            <DrawerDescription>
+              Envía dinero a otro jugador del tablero
+            </DrawerDescription>
+          )}
         </DrawerHeader>
 
         <TransactionFormContent
@@ -121,7 +140,6 @@ export default function TransactionForm ({
           onAmountChange={setAmount}
           onDescriptionChange={setDescription}
           onSuccess={handleSuccess}
-          onTransactionSuccess={onTransactionSuccess}
         />
       </DrawerContent>
     </Drawer>

@@ -60,8 +60,7 @@ export default function PlayersList ({
     return `$${player.balance}`
   }
 
-  const shouldShowBalance = (_player: TPlayer) => {
-    // Los montos de todos los jugadores son visibles para todos
+  const shouldShowBalance = () => {
     return true
   }
 
@@ -97,8 +96,8 @@ export default function PlayersList ({
               <CarouselItem key={player.id} className="pl-2 md:pl-4 basis-auto">
                 <div
                   className={`border rounded-lg p-4 flex flex-col gap-2 bg-card min-w-[140px] max-w-[160px] relative select-none ${onPlayerClick && (isCreator || player.id !== currentPlayerId)
-                      ? 'cursor-pointer hover:border-primary hover:shadow-md transition-all active:scale-95'
-                      : ''
+                    ? 'cursor-pointer hover:border-primary hover:shadow-md transition-all active:scale-95'
+                    : ''
                     }`}
                   onClick={(e) => handlePlayerClick(player.id, e)}
                 >
@@ -129,7 +128,7 @@ export default function PlayersList ({
                     </div>
                   </div>
                   <div className="flex-1 text-center">
-                    {shouldShowBalance(player) ? (
+                    {shouldShowBalance() ? (
                       <p className="text-lg font-bold text-primary">{formatBalance(player)}</p>
                     ) : (
                       <p className="text-lg font-bold text-muted-foreground">***</p>

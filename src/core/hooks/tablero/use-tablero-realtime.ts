@@ -270,20 +270,20 @@ export function useTableroRealtime ({
       })
     }
 
-    // Actualizar balances en tiempo real para que el sender y el receptor vean el saldo al instante
+    // Actualizar balances usando los valores autoritativos de la transacción (reemplazo, no aritmética)
     const fromId = newTransaction.fromPlayerId
     const toId = newTransaction.toPlayerId
-    const amount = newTransaction.amount
-    if (fromId && toId) {
+    const fromBalance = newTransaction.fromBalance
+    const toBalance = newTransaction.toBalance
+    if (fromId && toId && fromBalance != null && toBalance != null) {
       const updatedPlayers = currentPlayers.map((p) => {
-        if (p.id === fromId) return { ...p, balance: p.balance - amount }
-        if (p.id === toId) return { ...p, balance: p.balance + amount }
+        if (p.id === fromId) return { ...p, balance: fromBalance }
+        if (p.id === toId) return { ...p, balance: toBalance }
         return p
       })
       onPlayersChange(updatedPlayers)
     }
 
-    // Pasar la nueva transacción para que el wrapper la enriquezca y agregue
     onTransactionsChange(newTransaction)
   }, [tableroId, currentPlayerId, onPlayersChange, onTransactionsChange, onTransactionReceived])
 

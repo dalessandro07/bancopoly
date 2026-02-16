@@ -113,14 +113,14 @@ export function usePlayersRealtime ({ tableroId, initialPlayers, enabled = true 
 
   useRealtime({
     enabled,
-    channels: [`tablero-players:${tableroId}`],
+    channels: [`tablero:${tableroId}`],
     events: [
       'tablero.player.inserted',
       'tablero.player.updated',
       'tablero.player.deleted',
     ],
     onData ({ event, data, channel }) {
-      if (channel !== `tablero-players:${tableroId}`) return
+      if (channel !== `tablero:${tableroId}`) return
 
       switch (event) {
         case 'tablero.player.inserted':

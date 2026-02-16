@@ -28,7 +28,6 @@ interface TransactionFormContentProps {
   onAmountChange: (value: string) => void
   onDescriptionChange: (value: string) => void
   onSuccess: () => void
-  onTransactionSuccess?: (amount: number, fromPlayerId: string, toPlayerId: string) => void
 }
 
 function TransactionFormContentComponent ({
@@ -46,7 +45,6 @@ function TransactionFormContentComponent ({
   onAmountChange,
   onDescriptionChange,
   onSuccess,
-  onTransactionSuccess,
 }: TransactionFormContentProps) {
   const [isSubmitting, startTransition] = useTransition()
   const [animationTrigger, setAnimationTrigger] = useState(0)
@@ -145,19 +143,13 @@ function TransactionFormContentComponent ({
         }
 
         if (result?.success) {
-          const amount = parseInt(formData.get('amount') as string) || 0
-          const fromPlayerId = formData.get('fromPlayerId') as string
-          const toPlayerId = formData.get('toPlayerId') as string
-          if (amount > 0 && fromPlayerId && toPlayerId) {
-            onTransactionSuccess?.(amount, fromPlayerId, toPlayerId)
-          }
           setAnimationTrigger(prev => prev + 1)
           onSuccess()
           router.refresh()
         }
       })
     },
-    [maxAmount, onSuccess, onTransactionSuccess, router]
+    [maxAmount, onSuccess, router]
   )
 
   return (
@@ -191,7 +183,6 @@ function TransactionFormContentComponent ({
               name="fromPlayerId"
               value={fromPlayerId}
               players={fromPlayers}
-              currentPlayerId={currentPlayerId}
               onValueChange={handleFromPlayerChange}
               disabled={isLoading}
               required
@@ -202,7 +193,6 @@ function TransactionFormContentComponent ({
               name="toPlayerId"
               value={toPlayerId}
               players={toPlayers}
-              currentPlayerId={currentPlayerId}
               onValueChange={handleToPlayerChange}
               disabled={isLoading}
               required

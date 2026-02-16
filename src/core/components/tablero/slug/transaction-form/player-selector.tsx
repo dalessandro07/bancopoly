@@ -10,26 +10,24 @@ interface PlayerSelectorProps {
   name: string
   value: string
   players: TPlayer[]
-  currentPlayerId?: string
   onValueChange: (value: string) => void
   disabled?: boolean
   required?: boolean
   placeholder?: string
 }
 
-function PlayerSelectorComponent({
+function PlayerSelectorComponent ({
   label,
   name,
   value,
   players,
-  currentPlayerId,
   onValueChange,
   disabled,
   required,
   placeholder = 'Seleccionar jugador',
 }: PlayerSelectorProps) {
   const formatBalance = (player: TPlayer) => {
-    if (player.isSystemPlayer && player.systemPlayerType === 'bank') {
+    if (player.isSystemPlayer === 1 && player.systemPlayerType === 'bank') {
       return '∞'
     }
     return `$${player.balance}`

@@ -6,6 +6,7 @@ import { auth } from '@/src/core/lib/auth'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { eq, and } from 'drizzle-orm'
 import { emitPlayerInserted } from './utils'
 
 /**
@@ -109,11 +110,33 @@ export async function actionJoinTablero (initialState: unknown, formData: FormDa
     return { success: false, error: 'Usuario no autenticado' }
   }
 
-  //* 2. Obtener el nombre del jugador
-  const name = formData.get('name') as string
+  const name = (formData.get('name') as string)?.trim()
   const tableroId = formData.get('tableroId') as string
 
-  //* 3. Unirse al tablero
+  if (!name || !tableroId) {
+    return { success: false, error: 'Faltan datos requeridos' }
+  }
+  if (name.length > 50) {
+    return { success: false, error: 'El nombre no puede superar 50 caracteres' }
+  }
+
+  const [tableroData, existingPlayer] = await Promise.all([
+    db.select().from(tablero).where(eq(tablero.id, tableroId)),
+    db.select().from(player).where(
+      and(eq(player.tableroId, tableroId), eq(player.userId, session.user.id))
+    ),
+  ])
+
+  if (!tableroData[0]) {
+    return { success: false, error: 'El tablero no existe' }
+  }
+  if (tableroData[0].isEnded === 1) {
+    return { success: false, error: 'El tablero está cerrado, no puedes unirte' }
+  }
+  if (existingPlayer[0]) {
+    return { success: false, error: 'Ya estás unido a este tablero' }
+  }
+
   try {
     const newPlayer = await db.insert(player).values({
       id: crypto.randomUUID(),

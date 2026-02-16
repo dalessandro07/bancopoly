@@ -50,12 +50,12 @@ export function TransactionCard ({ transaction, currentPlayerId }: TransactionCa
         <div className="flex items-center justify-between gap-2 mb-3 text-xs text-muted-foreground">
           {transaction.fromBalance != null && (
             <span>
-              Saldo enviador: <span className="font-semibold text-foreground">${transaction.fromBalance.toLocaleString()}</span>
+              Saldo después de enviar: <span className="font-semibold text-foreground">${transaction.fromBalance.toLocaleString()}</span>
             </span>
           )}
           {transaction.toBalance != null && (
             <span>
-              Saldo receptor: <span className="font-semibold text-foreground">${transaction.toBalance.toLocaleString()}</span>
+              Saldo después de recibir: <span className="font-semibold text-foreground">${transaction.toBalance.toLocaleString()}</span>
             </span>
           )}
         </div>

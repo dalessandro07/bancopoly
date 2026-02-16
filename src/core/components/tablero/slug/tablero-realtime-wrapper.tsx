@@ -146,15 +146,6 @@ export default function TableroRealtimeWrapper ({
     setReceivedTransaction(transaction)
   }, [])
 
-  // Actualizar saldos en pantalla en cuanto el envío tiene éxito (sender ve su saldo al instante)
-  const handleTransactionSuccess = useCallback((amount: number, fromPlayerId: string, toPlayerId: string) => {
-    setPlayers(prev => prev.map(p => {
-      if (p.id === fromPlayerId) return { ...p, balance: p.balance - amount }
-      if (p.id === toPlayerId) return { ...p, balance: p.balance + amount }
-      return p
-    }))
-  }, [])
-
   useTableroRealtime({
     tableroId,
     currentPlayerId,
@@ -229,7 +220,6 @@ export default function TableroRealtimeWrapper ({
                 setPreselectedToPlayerId(undefined)
               }
             }}
-            onTransactionSuccess={handleTransactionSuccess}
           />
         </div>
       )}
