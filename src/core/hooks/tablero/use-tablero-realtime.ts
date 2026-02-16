@@ -56,6 +56,8 @@ function mapTransactionFromRealtime (data: {
   amount: number
   type: string
   description: string | null
+  fromBalance?: number | null
+  toBalance?: number | null
   createdAt: string
 }): TTransaction {
   return {
@@ -66,6 +68,8 @@ function mapTransactionFromRealtime (data: {
     amount: data.amount,
     type: data.type,
     description: data.description,
+    fromBalance: data.fromBalance ?? null,
+    toBalance: data.toBalance ?? null,
     createdAt: Date.parse(data.createdAt),
   }
 }
@@ -197,6 +201,8 @@ export function useTableroRealtime ({
     amount: number
     type: string
     description: string | null
+    fromBalance?: number | null
+    toBalance?: number | null
     createdAt: string
   }) => {
     const currentPlayers = playersRef.current
@@ -355,6 +361,8 @@ export function useTableroRealtime ({
             amount: number
             type: string
             description: string | null
+            fromBalance?: number | null
+            toBalance?: number | null
             createdAt: string
           })
           break

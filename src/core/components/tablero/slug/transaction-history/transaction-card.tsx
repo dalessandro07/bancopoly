@@ -45,6 +45,22 @@ export function TransactionCard ({ transaction, currentPlayerId }: TransactionCa
         </div>
       </div>
 
+      {/* Saldos en el momento de la transacción (si están guardados) */}
+      {(transaction.fromBalance != null || transaction.toBalance != null) && (
+        <div className="flex items-center justify-between gap-2 mb-3 text-xs text-muted-foreground">
+          {transaction.fromBalance != null && (
+            <span>
+              Saldo enviador: <span className="font-semibold text-foreground">${transaction.fromBalance.toLocaleString()}</span>
+            </span>
+          )}
+          {transaction.toBalance != null && (
+            <span>
+              Saldo receptor: <span className="font-semibold text-foreground">${transaction.toBalance.toLocaleString()}</span>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Jugadores involucrados */}
       <div className="flex items-center gap-3 mb-3">
         {/* Jugador que envía */}

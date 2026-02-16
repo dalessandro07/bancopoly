@@ -153,6 +153,10 @@ export const transaction = sqliteTable("transaction", {
   amount: integer("amount").notNull(),
   type: text("type").notNull(), // 'transfer', 'bank_give', 'bank_take', 'free_parking', 'initial'
   description: text("description"),
+  /** Saldo del jugador que envía después de la transacción */
+  fromBalance: integer("from_balance"),
+  /** Saldo del jugador que recibe después de la transacción */
+  toBalance: integer("to_balance"),
   createdAt: integer("created_at").default(0).notNull(),
 },
   (table) => [

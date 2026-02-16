@@ -49,6 +49,8 @@ export function formatTransactionForRealtime (transaction: TTransaction) {
     amount: transaction.amount,
     type: transaction.type,
     description: transaction.description,
+    fromBalance: transaction.fromBalance ?? undefined,
+    toBalance: transaction.toBalance ?? undefined,
     createdAt: new Date(timestamp).toISOString(),
   }
 }

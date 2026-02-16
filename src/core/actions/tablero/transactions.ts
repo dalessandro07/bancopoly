@@ -87,7 +87,7 @@ export async function actionCreateTransaction (initialState: unknown, formData: 
         .returning(),
     ])
 
-    // Registrar la transacción
+    // Registrar la transacción (incluir saldos después de la transferencia para el historial)
     const newTransaction = await db.insert(transaction).values({
       id: crypto.randomUUID(),
       tableroId,
@@ -96,6 +96,8 @@ export async function actionCreateTransaction (initialState: unknown, formData: 
       amount,
       type: 'transfer',
       description: description || null,
+      fromBalance: updatedFromPlayer[0].balance,
+      toBalance: updatedToPlayer[0].balance,
       createdAt: Date.now(),
     }).returning()
 

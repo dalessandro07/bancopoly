@@ -125,6 +125,8 @@ export async function actionGetAllTableroTransactions (tableroId: string) {
         amount: transaction.amount,
         type: transaction.type,
         description: transaction.description,
+        fromBalance: transaction.fromBalance,
+        toBalance: transaction.toBalance,
         createdAt: transaction.createdAt,
       })
       .from(transaction)
@@ -237,6 +239,8 @@ export async function actionGetPlayerTransactions (tableroId: string, playerId: 
         amount: transaction.amount,
         type: transaction.type,
         description: transaction.description,
+        fromBalance: transaction.fromBalance,
+        toBalance: transaction.toBalance,
         createdAt: transaction.createdAt,
       })
       .from(transaction)

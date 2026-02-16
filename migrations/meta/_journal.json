@@ -15,6 +15,13 @@
       "when": 1769188973198,
       "tag": "0001_damp_maximus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1771203372390,
+      "tag": "0002_right_human_fly",
+      "breakpoints": true
     }
   ]
 }
