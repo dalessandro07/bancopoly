@@ -19,6 +19,7 @@ interface TransactionFormProps {
   isCreator?: boolean
   preselectedToPlayerId?: string
   onOpenChange?: (open: boolean) => void
+  onTransactionSuccess?: (amount: number, fromPlayerId: string, toPlayerId: string) => void
 }
 
 export default function TransactionForm ({
@@ -28,6 +29,7 @@ export default function TransactionForm ({
   isCreator = false,
   preselectedToPlayerId,
   onOpenChange,
+  onTransactionSuccess,
 }: TransactionFormProps) {
   const [fromPlayerId, setFromPlayerId] = useState<string>('')
   const [toPlayerId, setToPlayerId] = useState<string>(() => preselectedToPlayerId || '')
@@ -119,6 +121,7 @@ export default function TransactionForm ({
           onAmountChange={setAmount}
           onDescriptionChange={setDescription}
           onSuccess={handleSuccess}
+          onTransactionSuccess={onTransactionSuccess}
         />
       </DrawerContent>
     </Drawer>

@@ -7,9 +7,11 @@ interface AmountInputProps {
   amount: string
   onAmountChange: (value: string) => void
   disabled?: boolean
+  /** Saldo máximo (ej. saldo del jugador origen). No aplica si es banco. */
+  maxAmount?: number
 }
 
-function AmountInputComponent ({ amount, onAmountChange, disabled }: AmountInputProps) {
+function AmountInputComponent ({ amount, onAmountChange, disabled, maxAmount }: AmountInputProps) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isPressedRef = useRef(false)
@@ -35,8 +37,15 @@ function AmountInputComponent ({ amount, onAmountChange, disabled }: AmountInput
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    // Permitir vacío o números válidos
-    if (value === '' || /^\d+$/.test(value)) {
+    if (value === '') {
+      onAmountChange('')
+      return
+    }
+    if (!/^\d+$/.test(value)) return
+    const n = parseInt(value, 10)
+    if (maxAmount != null && n > maxAmount) {
+      onAmountChange(maxAmount.toString())
+    } else {
       onAmountChange(value)
     }
   }
@@ -61,21 +70,24 @@ function AmountInputComponent ({ amount, onAmountChange, disabled }: AmountInput
     isPressedRef.current = true
     lastMouseDownTimeRef.current = Date.now()
 
-    // Primer incremento inmediato
+    // Primer incremento inmediato (respetando máximo)
     const currentAmount = parseFloat(amountRef.current) || 0
-    onAmountChange((currentAmount + 1).toString())
+    const next = maxAmount != null ? Math.min(currentAmount + 1, maxAmount) : currentAmount + 1
+    onAmountChange(next.toString())
 
     // Delay antes de empezar el intervalo rápido
     timeoutRef.current = setTimeout(() => {
       if (!isPressedRef.current) return
 
-      // Intervalo rápido (cada 50ms)
+      // Intervalo rápido (cada 50ms), respetando máximo
       intervalRef.current = setInterval(() => {
         const current = parseFloat(amountRef.current) || 0
-        onAmountChange((current + 1).toString())
+        const next = maxAmount != null ? Math.min(current + 1, maxAmount) : current + 1
+        if (next === current) return
+        onAmountChange(next.toString())
       }, 50)
     }, 300) // 300ms de delay antes de empezar el intervalo rápido
-  }, [onAmountChange, disabled])
+  }, [onAmountChange, disabled, maxAmount])
 
   const startDecrement = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
@@ -109,16 +121,15 @@ function AmountInputComponent ({ amount, onAmountChange, disabled }: AmountInput
   }, [onAmountChange, disabled, stopInterval])
 
   const handleIncrement = useCallback((e: React.MouseEvent) => {
-    // Prevenir el onClick si se ejecutó onMouseDown recientemente (dentro de los últimos 500ms)
     const timeSinceMouseDown = Date.now() - lastMouseDownTimeRef.current
     if (timeSinceMouseDown < 500) {
       e.preventDefault()
       return
     }
     const currentAmount = parseFloat(amount) || 0
-    const newAmount = currentAmount + 1
+    const newAmount = maxAmount != null ? Math.min(currentAmount + 1, maxAmount) : currentAmount + 1
     onAmountChange(newAmount.toString())
-  }, [amount, onAmountChange])
+  }, [amount, onAmountChange, maxAmount])
 
   const handleDecrement = useCallback((e: React.MouseEvent) => {
     // Prevenir el onClick si se ejecutó onMouseDown recientemente (dentro de los últimos 500ms)
@@ -134,6 +145,7 @@ function AmountInputComponent ({ amount, onAmountChange, disabled }: AmountInput
 
   const currentAmount = parseFloat(amount) || 0
   const canDecrement = currentAmount > 1
+  const canIncrement = maxAmount == null || currentAmount < maxAmount
 
   return (
     <div className="flex items-center justify-center gap-4">
@@ -159,6 +171,7 @@ function AmountInputComponent ({ amount, onAmountChange, disabled }: AmountInput
         id="amount"
         name="amount"
         min="1"
+        max={maxAmount}
         required
         disabled={disabled}
         placeholder="0"
@@ -179,7 +192,7 @@ function AmountInputComponent ({ amount, onAmountChange, disabled }: AmountInput
         onMouseLeave={stopInterval}
         onTouchStart={startIncrement}
         onTouchEnd={stopInterval}
-        disabled={disabled}
+        disabled={disabled || !canIncrement}
         className="rounded-md shrink-0 select-none"
         aria-label="Incrementar monto"
       >

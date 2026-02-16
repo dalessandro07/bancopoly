@@ -28,6 +28,7 @@ interface TransactionFormContentProps {
   onAmountChange: (value: string) => void
   onDescriptionChange: (value: string) => void
   onSuccess: () => void
+  onTransactionSuccess?: (amount: number, fromPlayerId: string, toPlayerId: string) => void
 }
 
 function TransactionFormContentComponent ({
@@ -45,6 +46,7 @@ function TransactionFormContentComponent ({
   onAmountChange,
   onDescriptionChange,
   onSuccess,
+  onTransactionSuccess,
 }: TransactionFormContentProps) {
   const [isSubmitting, startTransition] = useTransition()
   const [animationTrigger, setAnimationTrigger] = useState(0)
@@ -76,23 +78,29 @@ function TransactionFormContentComponent ({
   // Verificar si el jugador origen es el banco
   const isFromBank = fromPlayer?.isSystemPlayer && fromPlayer?.systemPlayerType === 'bank'
 
+  // Saldo máximo: no permitir monto mayor al del jugador origen (el banco no tiene límite)
+  const maxAmount = isFromBank ? undefined : (fromPlayer ? fromPlayer.balance : undefined)
+
   // Filtrar jugadores para el selector "Hacia"
   const toPlayers = useMemo(
     () => players.filter((p) => p.id !== actualFromPlayerId),
     [players, actualFromPlayerId]
   )
 
-  // Handler para botones de acceso rápido
+  // Handler para botones de acceso rápido (no superar saldo del jugador origen)
   const handleQuickAmount = useCallback(
     (quickAmount: number, quickDescription?: string) => {
       const currentAmount = parseFloat(amount) || 0
-      const newAmount = currentAmount + quickAmount
+      let newAmount = currentAmount + quickAmount
+      if (maxAmount != null && newAmount > maxAmount) {
+        newAmount = maxAmount
+      }
       onAmountChange(newAmount.toString())
       if (quickDescription) {
         onDescriptionChange(quickDescription)
       }
     },
-    [amount, onAmountChange, onDescriptionChange]
+    [amount, maxAmount, onAmountChange, onDescriptionChange]
   )
 
   // Handler para cambiar fromPlayerId y resetear toPlayerId si es necesario
@@ -122,6 +130,12 @@ function TransactionFormContentComponent ({
   // Acción del formulario
   const handleSubmit = useCallback(
     async (formData: FormData) => {
+      const amountNum = parseInt(formData.get('amount') as string) || 0
+      if (maxAmount != null && amountNum > maxAmount) {
+        toast.error(`El monto no puede ser mayor a tu saldo ($${maxAmount.toLocaleString()})`)
+        return
+      }
+
       startTransition(async () => {
         const result = await actionCreateTransaction(null, formData)
 
@@ -131,14 +145,19 @@ function TransactionFormContentComponent ({
         }
 
         if (result?.success) {
-          // Disparar animación
+          const amount = parseInt(formData.get('amount') as string) || 0
+          const fromPlayerId = formData.get('fromPlayerId') as string
+          const toPlayerId = formData.get('toPlayerId') as string
+          if (amount > 0 && fromPlayerId && toPlayerId) {
+            onTransactionSuccess?.(amount, fromPlayerId, toPlayerId)
+          }
           setAnimationTrigger(prev => prev + 1)
           onSuccess()
           router.refresh()
         }
       })
     },
-    [onSuccess, router]
+    [maxAmount, onSuccess, onTransactionSuccess, router]
   )
 
   return (
@@ -156,6 +175,7 @@ function TransactionFormContentComponent ({
             amount={amount}
             onAmountChange={onAmountChange}
             disabled={isLoading}
+            maxAmount={maxAmount}
           />
           <QuickAmountButtons
             onQuickAmount={handleQuickAmount}
@@ -210,24 +230,18 @@ function TransactionFormContentComponent ({
           <datalist id="description-options">
             <option value="Pago de alquiler" />
             <option value="Impuestos" />
-            <option value="Multa" />
             <option value="Pago de servicios" />
             <option value="Compra de propiedad" />
-            <option value="Venta de propiedad" />
-            <option value="Pago de hospital" />
-            <option value="Pago de cárcel" />
+            <option value="Hipoteca" />
           </datalist>
           <div className="flex gap-2 flex-wrap">
             {(
               [
                 { label: 'Renta', value: 'Renta' },
                 { label: 'Compra', value: 'Compra de propiedad' },
-                { label: 'Venta', value: 'Venta de propiedad' },
-                { label: 'Multa', value: 'Multa' },
+                { label: 'Hipoteca', value: 'Hipoteca' },
                 { label: 'Impuestos', value: 'Impuestos' },
                 { label: 'Servicios', value: 'Pago de servicios' },
-                { label: 'Hospital', value: 'Pago de hospital' },
-                { label: 'Cárcel', value: 'Pago de cárcel' },
               ] as const
             ).map(({ label, value }) => (
               <Button
