@@ -344,22 +344,26 @@ export async function actionGetTableroStats (tableroId: string) {
       .where(eq(transaction.tableroId, tableroId))
       .orderBy(desc(transaction.createdAt))
 
-    //* 5. Calcular estadísticas por jugador
+    //* 5. Calcular estadísticas por jugador usando TODAS las transacciones como fuente de verdad
+    // El balance final se deriva del historial de transacciones para garantizar consistencia
     const playerStats = allPlayers.map(({ player, user }) => {
       const initialBalance = 1500 // Balance inicial en Monopoly
-      const finalBalance = player.balance
-      const netChange = finalBalance - initialBalance
 
-      // Calcular transacciones enviadas y recibidas
+      // Incluir TODAS las transacciones donde el jugador participa (transfer, bank_give, bank_take, free_parking, etc.)
       const sentTransactions = allTransactions.filter(t => t.fromPlayerId === player.id)
       const receivedTransactions = allTransactions.filter(t => t.toPlayerId === player.id)
 
       const totalSent = sentTransactions.reduce((sum, t) => sum + t.amount, 0)
       const totalReceived = receivedTransactions.reduce((sum, t) => sum + t.amount, 0)
 
+      // Balance final computado desde transacciones (fuente de verdad)
+      const finalBalance = initialBalance + totalReceived - totalSent
+      const netChange = finalBalance - initialBalance
+
       return {
         player: {
           ...player,
+          balance: finalBalance, // Usar balance computado para consistencia en la UI
           user: user || null,
         },
         initialBalance,
@@ -376,10 +380,10 @@ export async function actionGetTableroStats (tableroId: string) {
       return { success: false, error: 'No hay jugadores en este tablero' }
     }
 
-    //* 7. Ordenar por balance final (ganador primero)
+    //* 7. Ordenar por balance final (ganador primero) - basado en todas las transacciones
     const ranking = [...playerStats].sort((a, b) => b.finalBalance - a.finalBalance)
 
-    //* 8. Encontrar ganador y perdedor
+    //* 8. Encontrar ganador (quien ganó más) y perdedor (quien perdió más) según netChange de transacciones
     const winner = ranking[0]
     const loser = ranking[ranking.length - 1]
 
