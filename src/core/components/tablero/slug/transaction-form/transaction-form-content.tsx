@@ -1,260 +1,286 @@
-'use client'
+"use client";
 
-import { actionCreateTransaction } from '@/src/core/actions/tablero'
-import { TransactionAnimation } from '@/src/core/components/tablero/transaction-animation'
-import { Button } from '@/src/core/components/ui/button'
-import { Input } from '@/src/core/components/ui/input'
-import { Label } from '@/src/core/components/ui/label'
-import type { TPlayer } from '@/src/core/lib/db/schema'
-import { useRouter } from 'next/navigation'
-import { memo, useCallback, useMemo, useRef, useState, useTransition } from 'react'
-import { toast } from 'sonner'
-import { AmountInput } from './amount-input'
-import { PlayerSelector } from './player-selector'
-import { QuickAmountButtons } from './quick-amount-buttons'
+import { actionCreateTransaction } from "@/src/core/actions/tablero";
+import { TransactionAnimation } from "@/src/core/components/tablero/transaction-animation";
+import { Button } from "@/src/core/components/ui/button";
+import { Input } from "@/src/core/components/ui/input";
+import { Label } from "@/src/core/components/ui/label";
+import type { TPlayer } from "@/src/core/lib/db/schema";
+import { useRouter } from "next/navigation";
+import {
+	memo,
+	useCallback,
+	useMemo,
+	useRef,
+	useState,
+	useTransition,
+} from "react";
+import { toast } from "sonner";
+import { AmountInput } from "./amount-input";
+import { PlayerSelector } from "./player-selector";
+import { QuickAmountButtons } from "./quick-amount-buttons";
 
 interface TransactionFormContentProps {
-  tableroId: string
-  players: TPlayer[]
-  currentPlayerId?: string
-  isCreator?: boolean
-  fromPlayerId: string
-  toPlayerId: string
-  amount: string
-  description: string
-  isPending: boolean
-  onFromPlayerChange: (value: string) => void
-  onToPlayerChange: (value: string) => void
-  onAmountChange: (value: string) => void
-  onDescriptionChange: (value: string) => void
-  onSuccess: () => void
+	tableroId: string;
+	players: TPlayer[];
+	currentPlayerId?: string;
+	isCreator?: boolean;
+	fromPlayerId: string;
+	toPlayerId: string;
+	amount: string;
+	description: string;
+	isPending: boolean;
+	onFromPlayerChange: (value: string) => void;
+	onToPlayerChange: (value: string) => void;
+	onAmountChange: (value: string) => void;
+	onDescriptionChange: (value: string) => void;
+	onSuccess: () => void;
 }
 
-function TransactionFormContentComponent ({
-  tableroId,
-  players,
-  currentPlayerId,
-  isCreator = false,
-  fromPlayerId,
-  toPlayerId,
-  amount,
-  description,
-  isPending,
-  onFromPlayerChange,
-  onToPlayerChange,
-  onAmountChange,
-  onDescriptionChange,
-  onSuccess,
+function TransactionFormContentComponent({
+	tableroId,
+	players,
+	currentPlayerId,
+	isCreator = false,
+	fromPlayerId,
+	toPlayerId,
+	amount,
+	description,
+	isPending,
+	onFromPlayerChange,
+	onToPlayerChange,
+	onAmountChange,
+	onDescriptionChange,
+	onSuccess,
 }: TransactionFormContentProps) {
-  const [isSubmitting, startTransition] = useTransition()
-  const [animationTrigger, setAnimationTrigger] = useState(0)
-  const formRef = useRef<HTMLFormElement>(null)
-  const router = useRouter()
+	const [isSubmitting, startTransition] = useTransition();
+	const [animationTrigger, setAnimationTrigger] = useState(0);
+	const formRef = useRef<HTMLFormElement>(null);
+	const router = useRouter();
 
-  const isLoading = isPending || isSubmitting
+	const isLoading = isPending || isSubmitting;
 
-  // Filtrar jugadores para el selector "Desde"
-  const fromPlayers = useMemo(
-    () =>
-      players.filter((p) => {
-        if (p.id === currentPlayerId) return true
-        if (p.isSystemPlayer && isCreator) return true
-        return false
-      }),
-    [players, currentPlayerId, isCreator]
-  )
+	// Filtrar jugadores para el selector "Desde"
+	const fromPlayers = useMemo(
+		() =>
+			players.filter((p) => {
+				if (p.id === currentPlayerId) return true;
+				if (p.isSystemPlayer && isCreator) return true;
+				return false;
+			}),
+		[players, currentPlayerId, isCreator],
+	);
 
-  // Determinar el jugador origen actual (para filtrar en "Hacia")
-  const actualFromPlayerId = isCreator ? fromPlayerId : currentPlayerId
+	// Determinar el jugador origen actual (para filtrar en "Hacia")
+	const actualFromPlayerId = isCreator ? fromPlayerId : currentPlayerId;
 
-  // Obtener el jugador origen seleccionado
-  const fromPlayer = useMemo(() => {
-    if (!actualFromPlayerId) return null
-    return players.find((p) => p.id === actualFromPlayerId)
-  }, [players, actualFromPlayerId])
+	// Obtener el jugador origen seleccionado
+	const fromPlayer = useMemo(() => {
+		if (!actualFromPlayerId) return null;
+		return players.find((p) => p.id === actualFromPlayerId);
+	}, [players, actualFromPlayerId]);
 
-  // Verificar si el jugador origen es el banco
-  const isFromBank = fromPlayer?.isSystemPlayer && fromPlayer?.systemPlayerType === 'bank'
+	// Verificar si el jugador origen es el banco
+	const isFromBank =
+		fromPlayer?.isSystemPlayer && fromPlayer?.systemPlayerType === "bank";
 
-  // Saldo máximo: no permitir monto mayor al del jugador origen (el banco no tiene límite)
-  const maxAmount = isFromBank ? undefined : (fromPlayer ? fromPlayer.balance : undefined)
+	// Saldo máximo: no permitir monto mayor al del jugador origen (el banco no tiene límite)
+	const maxAmount = isFromBank
+		? undefined
+		: fromPlayer
+			? fromPlayer.balance
+			: undefined;
 
-  // Filtrar jugadores para el selector "Hacia"
-  const toPlayers = useMemo(
-    () => players.filter((p) => p.id !== actualFromPlayerId),
-    [players, actualFromPlayerId]
-  )
+	// Filtrar jugadores para el selector "Hacia"
+	const toPlayers = useMemo(
+		() => players.filter((p) => p.id !== actualFromPlayerId),
+		[players, actualFromPlayerId],
+	);
 
-  // Handler para botones de acceso rápido (no superar saldo del jugador origen)
-  const handleQuickAmount = useCallback(
-    (quickAmount: number, quickDescription?: string) => {
-      const currentAmount = parseFloat(amount) || 0
-      let newAmount = currentAmount + quickAmount
-      if (maxAmount != null && newAmount > maxAmount) {
-        newAmount = maxAmount
-      }
-      onAmountChange(newAmount.toString())
-      if (quickDescription) {
-        onDescriptionChange(quickDescription)
-      }
-    },
-    [amount, maxAmount, onAmountChange, onDescriptionChange]
-  )
+	// Handler para botones de acceso rápido (no superar saldo del jugador origen)
+	const handleQuickAmount = useCallback(
+		(quickAmount: number, quickDescription?: string) => {
+			const currentAmount = parseFloat(amount) || 0;
+			let newAmount = currentAmount + quickAmount;
+			if (maxAmount != null && newAmount > maxAmount) {
+				newAmount = maxAmount;
+			}
+			onAmountChange(newAmount.toString());
+			if (quickDescription) {
+				onDescriptionChange(quickDescription);
+			}
+		},
+		[amount, maxAmount, onAmountChange, onDescriptionChange],
+	);
 
-  // Handler para cambiar fromPlayerId y resetear toPlayerId si es necesario
-  const handleFromPlayerChange = useCallback(
-    (value: string) => {
-      onFromPlayerChange(value)
-      // Si el toPlayerId actual es igual al nuevo fromPlayerId, resetearlo
-      if (toPlayerId === value) {
-        onToPlayerChange('')
-      }
-    },
-    [toPlayerId, onFromPlayerChange, onToPlayerChange]
-  )
+	// Handler para cambiar fromPlayerId y resetear toPlayerId si es necesario
+	const handleFromPlayerChange = useCallback(
+		(value: string) => {
+			onFromPlayerChange(value);
+			// Si el toPlayerId actual es igual al nuevo fromPlayerId, resetearlo
+			if (toPlayerId === value) {
+				onToPlayerChange("");
+			}
+		},
+		[toPlayerId, onFromPlayerChange, onToPlayerChange],
+	);
 
-  // Handler para cambiar toPlayerId
-  const handleToPlayerChange = useCallback(
-    (value: string) => {
-      onToPlayerChange(value)
-      // Si es creador y no hay fromPlayerId seleccionado, seleccionar automáticamente su jugador
-      if (isCreator && !fromPlayerId && currentPlayerId) {
-        onFromPlayerChange(currentPlayerId)
-      }
-    },
-    [isCreator, fromPlayerId, currentPlayerId, onToPlayerChange, onFromPlayerChange]
-  )
+	// Handler para cambiar toPlayerId
+	const handleToPlayerChange = useCallback(
+		(value: string) => {
+			onToPlayerChange(value);
+			// Si es creador y no hay fromPlayerId seleccionado, seleccionar automáticamente su jugador
+			if (isCreator && !fromPlayerId && currentPlayerId) {
+				onFromPlayerChange(currentPlayerId);
+			}
+		},
+		[
+			isCreator,
+			fromPlayerId,
+			currentPlayerId,
+			onToPlayerChange,
+			onFromPlayerChange,
+		],
+	);
 
-  // Acción del formulario
-  const handleSubmit = useCallback(
-    async (formData: FormData) => {
-      const amountNum = parseInt(formData.get('amount') as string) || 0
-      if (maxAmount != null && amountNum > maxAmount) {
-        toast.error(`El monto no puede ser mayor a tu saldo ($${maxAmount.toLocaleString()})`)
-        return
-      }
+	// Acción del formulario
+	const handleSubmit = useCallback(
+		async (formData: FormData) => {
+			const amountNum = parseInt(formData.get("amount") as string) || 0;
+			if (maxAmount != null && amountNum > maxAmount) {
+				toast.error(
+					`El monto no puede ser mayor a tu saldo ($${maxAmount.toLocaleString()})`,
+				);
+				return;
+			}
 
-      startTransition(async () => {
-        const result = await actionCreateTransaction(null, formData)
+			startTransition(async () => {
+				const result = await actionCreateTransaction(null, formData);
 
-        if (result?.error) {
-          toast.error(result.error)
-          return
-        }
+				if (result?.error) {
+					toast.error(result.error);
+					return;
+				}
 
-        if (result?.success) {
-          setAnimationTrigger(prev => prev + 1)
-          onSuccess()
-          router.refresh()
-        }
-      })
-    },
-    [maxAmount, onSuccess, router]
-  )
+				if (result?.success) {
+					setAnimationTrigger((prev) => prev + 1);
+					onSuccess();
+					router.refresh();
+				}
+			});
+		},
+		[maxAmount, onSuccess, router],
+	);
 
-  return (
-    <>
-      <TransactionAnimation trigger={animationTrigger > 0} />
-      <form
-        ref={formRef}
-        action={handleSubmit}
-        className="flex flex-col gap-4 px-4 pb-8"
-      >
-        <input type="hidden" name="tableroId" value={tableroId} />
+	return (
+		<>
+			<TransactionAnimation trigger={animationTrigger > 0} />
+			<form
+				ref={formRef}
+				action={handleSubmit}
+				className="flex flex-col gap-4 px-4 pb-8"
+			>
+				<input type="hidden" name="tableroId" value={tableroId} />
 
-        <div className="space-y-2">
-          <AmountInput
-            amount={amount}
-            onAmountChange={onAmountChange}
-            disabled={isLoading}
-            maxAmount={maxAmount}
-          />
-          <QuickAmountButtons
-            onQuickAmount={handleQuickAmount}
-            disabled={isLoading}
-            showBankAmount={!!isFromBank}
-          />
-        </div>
+				<div className="space-y-2">
+					<AmountInput
+						amount={amount}
+						onAmountChange={onAmountChange}
+						disabled={isLoading}
+						maxAmount={maxAmount}
+					/>
+					<QuickAmountButtons
+						onQuickAmount={handleQuickAmount}
+						disabled={isLoading}
+						showBankAmount={!!isFromBank}
+					/>
+				</div>
 
-        {isCreator ? (
-          <>
-            <PlayerSelector
-              label="Desde:"
-              name="fromPlayerId"
-              value={fromPlayerId}
-              players={fromPlayers}
-              onValueChange={handleFromPlayerChange}
-              disabled={isLoading}
-              required
-            />
+				{isCreator ? (
+					<>
+						<PlayerSelector
+							label="Desde:"
+							name="fromPlayerId"
+							value={fromPlayerId}
+							players={fromPlayers}
+							onValueChange={handleFromPlayerChange}
+							disabled={isLoading}
+							required
+						/>
 
-            <PlayerSelector
-              label="Hacia:"
-              name="toPlayerId"
-              value={toPlayerId}
-              players={toPlayers}
-              onValueChange={handleToPlayerChange}
-              disabled={isLoading}
-              required
-            />
-          </>
-        ) : (
-          <>
-            <input type="hidden" name="fromPlayerId" value={currentPlayerId || ''} />
-            <input type="hidden" name="toPlayerId" value={toPlayerId || ''} />
-          </>
-        )}
+						<PlayerSelector
+							label="Hacia:"
+							name="toPlayerId"
+							value={toPlayerId}
+							players={toPlayers}
+							onValueChange={handleToPlayerChange}
+							disabled={isLoading}
+							required
+						/>
+					</>
+				) : (
+					<>
+						<input
+							type="hidden"
+							name="fromPlayerId"
+							value={currentPlayerId || ""}
+						/>
+						<input type="hidden" name="toPlayerId" value={toPlayerId || ""} />
+					</>
+				)}
 
-        <div className="space-y-2">
-          <Label htmlFor="description">Descripción (opcional):</Label>
-          <Input
-            type="text"
-            id="description"
-            name="description"
-            list="description-options"
-            disabled={isLoading}
-            placeholder="Concepto de la transferencia"
-            value={description}
-            onChange={(e) => onDescriptionChange(e.target.value)}
-          />
-          <datalist id="description-options">
-            <option value="Pago de alquiler" />
-            <option value="Impuestos" />
-            <option value="Pago de servicios" />
-            <option value="Compra de propiedad" />
-            <option value="Hipoteca" />
-          </datalist>
-          <div className="flex gap-2 flex-wrap">
-            {(
-              [
-                { label: 'Renta', value: 'Renta' },
-                { label: 'Compra', value: 'Compra de propiedad' },
-                { label: 'Hipoteca', value: 'Hipoteca' },
-                { label: 'Impuestos', value: 'Impuestos' },
-                { label: 'Servicios', value: 'Pago de servicios' },
-              ] as const
-            ).map(({ label, value }) => (
-              <Button
-                key={value}
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onDescriptionChange(value)}
-                disabled={isLoading}
-                className="text-xs"
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </div>
+				<div className="space-y-2">
+					<Label htmlFor="description">Descripción (opcional):</Label>
+					<Input
+						type="text"
+						id="description"
+						name="description"
+						list="description-options"
+						disabled={isLoading}
+						placeholder="Concepto de la transferencia"
+						value={description}
+						onChange={(e) => onDescriptionChange(e.target.value)}
+					/>
+					<datalist id="description-options">
+						<option value="Pago de alquiler" />
+						<option value="Impuestos" />
+						<option value="Pago de servicios" />
+						<option value="Compra de propiedad" />
+						<option value="Hipoteca" />
+					</datalist>
+					<div className="flex gap-2 flex-wrap">
+						{(
+							[
+								{ label: "Renta", value: "Renta" },
+								{ label: "Compra", value: "Compra de propiedad" },
+								{ label: "Casa", value: "Compra de casa" },
+								{ label: "Hotel", value: "Compra de hotel" },
+								{ label: "Hipoteca", value: "Hipoteca" },
+								{ label: "Impuestos", value: "Impuestos" },
+								{ label: "Servicios", value: "Pago de servicios" },
+							] as const
+						).map(({ label, value }) => (
+							<Button
+								key={value}
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => onDescriptionChange(value)}
+								disabled={isLoading}
+								className="text-xs"
+							>
+								{label}
+							</Button>
+						))}
+					</div>
+				</div>
 
-        <Button type="submit" disabled={isLoading} className="w-full" size="lg">
-          {isLoading ? 'Procesando...' : 'Transferir'}
-        </Button>
-      </form>
-    </>
-  )
+				<Button type="submit" disabled={isLoading} className="w-full" size="lg">
+					{isLoading ? "Procesando..." : "Transferir"}
+				</Button>
+			</form>
+		</>
+	);
 }
 
-export const TransactionFormContent = memo(TransactionFormContentComponent)
+export const TransactionFormContent = memo(TransactionFormContentComponent);

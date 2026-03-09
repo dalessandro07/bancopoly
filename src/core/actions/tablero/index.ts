@@ -1,21 +1,21 @@
 // Re-exportar todas las funciones desde los módulos organizados
-export {
-  actionGetAllTableroTransactions, actionGetPlayerTransactions, actionGetTableroById, actionGetTablerosFromUser, actionGetTableroStats
-} from './select'
 
 export {
-  actionCreateTablero,
-  actionJoinTablero
-} from './insert'
+	actionDeletePlayer,
+	actionDeleteTablero,
+	actionLeaveTablero,
+} from "./delete";
 
 export {
-  actionCloseTablero
-} from './update'
-
+	actionCreateTablero,
+	actionJoinTablero,
+} from "./insert";
 export {
-  actionDeletePlayer, actionDeleteTablero, actionLeaveTablero
-} from './delete'
-
-export {
-  actionCreateTransaction
-} from './transactions'
+	actionGetAllTableroTransactions,
+	actionGetPlayerTransactions,
+	actionGetTableroById,
+	actionGetTableroStats,
+	actionGetTablerosFromUser,
+} from "./select";
+export { actionCreateTransaction } from "./transactions";
+export { actionCloseTablero } from "./update";

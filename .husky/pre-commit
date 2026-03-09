@@ -1,1 +1,1 @@
-bun run lint --fix && tsc --noEmit
+bun run format && bun run type-check

@@ -1,2 +1,2 @@
-export { actionUpdateUserProfile } from './update'
-export { actionUploadImageToImgbb } from './upload-image'
+export { actionUpdateUserProfile } from "./update";
+export { actionUploadImageToImgbb } from "./upload-image";
