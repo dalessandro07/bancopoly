@@ -466,24 +466,6 @@ export function useTableroRealtime({
 							return next;
 						});
 					}
-					if (
-						leaveData.tableroId === tableroId &&
-						leaveData.playerId !== currentPlayerId
-					) {
-						const mensajes = [
-							`${leaveData.playerName} se evaporó`,
-							`${leaveData.playerName} desapareció del mapa`,
-							`${leaveData.playerName} se fue a por el gato`,
-							`${leaveData.playerName} perdió la señal (y las esperanzas)`,
-							`${leaveData.playerName} se fue a revisar el WiFi`,
-							`${leaveData.playerName} parece que está en otra aplicación`,
-							`${leaveData.playerName} está chateando`,
-							`${leaveData.playerName} no está prestando atención al juego`,
-						];
-						toast.info(mensajes[Math.floor(Math.random() * mensajes.length)], {
-							position: "top-center",
-						});
-					}
 					break;
 				}
 				case "tablero.presence.enter": {
@@ -496,23 +478,6 @@ export function useTableroRealtime({
 						setConnectedPlayerIds((prev) =>
 							new Set(prev).add(enterData.playerId),
 						);
-					}
-					if (
-						enterData.tableroId === tableroId &&
-						enterData.playerId !== currentPlayerId
-					) {
-						const mensajes = [
-							`${enterData.playerName} reapareció de las tinieblas`,
-							`${enterData.playerName} volvió de las compras`,
-							`${enterData.playerName} finalmente reconectó el WiFi`,
-							`${enterData.playerName} regresó del mundo paralelo`,
-							`${enterData.playerName} está de vuelta (y con ganas de ganar)`,
-							`${enterData.playerName} volvió para seguir jugando`,
-							`${enterData.playerName} ya dejó de chatear`,
-						];
-						toast.info(mensajes[Math.floor(Math.random() * mensajes.length)], {
-							position: "top-center",
-						});
 					}
 					break;
 				}
