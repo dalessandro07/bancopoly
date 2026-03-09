@@ -1,18 +1,11 @@
 "use client";
 
+import { PlusCircleIcon, SparklesIcon } from "lucide-react";
+import { useActionState, useState } from "react";
 import { actionCreateTablero } from "@/src/core/actions/tablero";
 import { Button } from "@/src/core/components/ui/button";
 import { Input } from "@/src/core/components/ui/input";
 import { Label } from "@/src/core/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/src/core/components/ui/select";
-import { PlusCircleIcon, SparklesIcon } from "lucide-react";
-import { useActionState, useState } from "react";
 
 const INITIAL_BALANCE_OPTIONS = [
 	{ value: "1500", label: "$1,500 (clásico)" },
@@ -41,7 +34,6 @@ export default function FormNewTablero() {
 			</div>
 
 			<form action={formAction} className="space-y-4">
-				<input type="hidden" name="initialBalance" value={initialBalance} />
 				<div className="space-y-2">
 					<Label htmlFor="name" className="text-base font-semibold">
 						Nombre del tablero
@@ -61,29 +53,25 @@ export default function FormNewTablero() {
 					<Label htmlFor="initialBalance" className="text-base font-semibold">
 						Dinero inicial por jugador
 					</Label>
-					<Select
+					<Input
+						id="initialBalance"
+						name="initialBalance"
+						type="text"
+						inputMode="numeric"
+						list="initialBalance-options"
+						placeholder="Ej: 1500 o elige una opción"
 						value={initialBalance}
-						onValueChange={setInitialBalance}
+						onChange={(e) => setInitialBalance(e.target.value)}
 						disabled={isPending}
-					>
-						<SelectTrigger
-							id="initialBalance"
-							className="h-12 w-full text-base"
-						>
-							<SelectValue placeholder="Selecciona el dinero inicial" />
-						</SelectTrigger>
-						<SelectContent>
-							{INITIAL_BALANCE_OPTIONS.map((opt) => (
-								<SelectItem
-									key={opt.value}
-									value={opt.value}
-									className="text-base"
-								>
-									{opt.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
+						className="h-12 w-full text-base"
+					/>
+					<datalist id="initialBalance-options">
+						{INITIAL_BALANCE_OPTIONS.map((opt) => (
+							<option key={opt.value} value={opt.value}>
+								{opt.label}
+							</option>
+						))}
+					</datalist>
 				</div>
 
 				<Button

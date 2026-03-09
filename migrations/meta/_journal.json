@@ -1,48 +1,48 @@
 {
-  "version": "7",
-  "dialect": "sqlite",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "6",
-      "when": 1767637924939,
-      "tag": "0000_cloudy_magus",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1769188973198,
-      "tag": "0001_damp_maximus",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1771203372390,
-      "tag": "0002_right_human_fly",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1771448074203,
-      "tag": "0003_naive_lady_ursula",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1771500000000,
-      "tag": "0004_add_initial_balance",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1773097617470,
-      "tag": "0005_tense_warlock",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "sqlite",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "6",
+			"when": 1767637924939,
+			"tag": "0000_cloudy_magus",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "6",
+			"when": 1769188973198,
+			"tag": "0001_damp_maximus",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "6",
+			"when": 1771203372390,
+			"tag": "0002_right_human_fly",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "6",
+			"when": 1771448074203,
+			"tag": "0003_naive_lady_ursula",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "6",
+			"when": 1771500000000,
+			"tag": "0004_add_initial_balance",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "6",
+			"when": 1773097617470,
+			"tag": "0005_tense_warlock",
+			"breakpoints": true
+		}
+	]
 }

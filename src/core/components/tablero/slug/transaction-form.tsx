@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
 	Avatar,
 	AvatarFallback,
@@ -13,15 +14,8 @@ import {
 	DrawerTitle,
 } from "@/src/core/components/ui/drawer";
 import { ScrollArea } from "@/src/core/components/ui/scroll-area";
-import { setBackConsumer } from "@/src/core/hooks/use-confirm-back";
+import { useTransactionForm } from "@/src/core/hooks/tablero/use-transaction-form";
 import type { TPlayer } from "@/src/core/lib/db/schema";
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useState,
-	useTransition,
-} from "react";
 import { TransactionFormContent } from "./transaction-form/transaction-form-content";
 
 type PlayerWithUser = TPlayer & {
@@ -50,77 +44,24 @@ export default function TransactionForm({
 	preselectedToPlayerId,
 	onOpenChange,
 }: TransactionFormProps) {
-	const [fromPlayerId, setFromPlayerId] = useState<string>("");
-	const [toPlayerId, setToPlayerId] = useState<string>(
-		() => preselectedToPlayerId || "",
-	);
-	const [amount, setAmount] = useState<string>("");
-	const [description, setDescription] = useState<string>("");
-	const [isOpen, setIsOpen] = useState(() => !!preselectedToPlayerId);
-	const [, startTransition] = useTransition();
-
-	// Abrir el formulario cuando se preselecciona un jugador
-	useEffect(() => {
-		if (preselectedToPlayerId) {
-			startTransition(() => {
-				setToPlayerId(preselectedToPlayerId);
-				// Si es creador y no hay fromPlayerId seleccionado, seleccionar automáticamente su jugador
-				if (isCreator && !fromPlayerId && currentPlayerId) {
-					setFromPlayerId(currentPlayerId);
-				}
-				setIsOpen(true);
-			});
-			if (onOpenChange) {
-				onOpenChange(true);
-			}
-		}
-	}, [
-		preselectedToPlayerId,
-		onOpenChange,
-		isCreator,
+	const {
 		fromPlayerId,
+		setFromPlayerId,
+		toPlayerId,
+		setToPlayerId,
+		amount,
+		setAmount,
+		description,
+		setDescription,
+		isOpen,
+		handleClose,
+		handleSuccess,
+	} = useTransactionForm({
+		preselectedToPlayerId,
+		isCreator,
 		currentPlayerId,
-	]);
-
-	// Handler para cerrar y resetear
-	const handleClose = useCallback(
-		(open: boolean) => {
-			setIsOpen(open);
-			if (!open) {
-				// Resetear cuando se cierra
-				setAmount("");
-				setDescription("");
-				if (preselectedToPlayerId) {
-					setToPlayerId("");
-				}
-			}
-			if (onOpenChange) {
-				onOpenChange(open);
-			}
-		},
-		[preselectedToPlayerId, onOpenChange],
-	);
-
-	// Al pulsar atrás con el drawer abierto, cerrar el drawer en lugar de mostrar "¿Salir del tablero?"
-	useEffect(() => {
-		if (isOpen) {
-			setBackConsumer(() => () => handleClose(false));
-			return () => setBackConsumer(null);
-		}
-		setBackConsumer(null);
-	}, [isOpen, handleClose]);
-
-	// Handler para éxito de la transacción
-	const handleSuccess = useCallback(() => {
-		setFromPlayerId("");
-		setToPlayerId("");
-		setAmount("");
-		setDescription("");
-		setIsOpen(false);
-		if (onOpenChange) {
-			onOpenChange(false);
-		}
-	}, [onOpenChange]);
+		onOpenChange,
+	});
 
 	const toPlayer = useMemo(
 		() => (toPlayerId ? players.find((p) => p.id === toPlayerId) : null),

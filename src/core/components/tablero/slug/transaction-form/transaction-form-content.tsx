@@ -1,21 +1,13 @@
 "use client";
 
-import { actionCreateTransaction } from "@/src/core/actions/tablero";
+import { memo } from "react";
+import { QuickDescriptionButtons } from "@/src/core/components/tablero/slug/transaction-form/quick-description-buttons";
 import { TransactionAnimation } from "@/src/core/components/tablero/transaction-animation";
 import { Button } from "@/src/core/components/ui/button";
 import { Input } from "@/src/core/components/ui/input";
 import { Label } from "@/src/core/components/ui/label";
+import { useTransactionFormContent } from "@/src/core/hooks/tablero/use-transaction-form-content";
 import type { TPlayer } from "@/src/core/lib/db/schema";
-import { useRouter } from "next/navigation";
-import {
-	memo,
-	useCallback,
-	useMemo,
-	useRef,
-	useState,
-	useTransition,
-} from "react";
-import { toast } from "sonner";
 import { AmountInput } from "./amount-input";
 import { PlayerSelector } from "./player-selector";
 import { QuickAmountButtons } from "./quick-amount-buttons";
@@ -37,6 +29,82 @@ interface TransactionFormContentProps {
 	onSuccess: () => void;
 }
 
+/** Botones ordenados según reglas Monopoly: banco, parada libre, jugador */
+const DESCRIPTION_BUTTONS = [
+	{
+		label: "Casa",
+		value: "Compra de casa",
+		showWhen: "bank_receives" as const,
+		sortOrder: 1,
+	},
+	{
+		label: "Hotel",
+		value: "Compra de hotel",
+		showWhen: "bank_receives" as const,
+		sortOrder: 2,
+	},
+	{
+		label: "Hipoteca",
+		value: "Hipoteca",
+		showWhen: "bank_or_free_parking" as const,
+		sortOrder: 3,
+	},
+	{
+		label: "Impuestos",
+		value: "Impuestos",
+		showWhen: "bank_or_free_parking" as const,
+		sortOrder: 4,
+	},
+	{
+		label: "Renta",
+		value: "Renta",
+		showWhen: "player_sends_to_player" as const,
+		sortOrder: 5,
+	},
+	{
+		label: "Compra",
+		value: "Compra de propiedad",
+		showWhen: "player_sends_to_player" as const,
+		sortOrder: 6,
+	},
+	{
+		label: "Servicios",
+		value: "Pago de servicios",
+		showWhen: "player_sends_to_player" as const,
+		sortOrder: 7,
+	},
+	{
+		label: "Salida",
+		value: "Salida",
+		showWhen: "bank_sends_to_player" as const,
+		sortOrder: 8,
+	},
+	{
+		label: "Fortuna",
+		value: "Fortuna",
+		showWhen: "bank_sends_to_player" as const,
+		sortOrder: 9,
+	},
+	{
+		label: "Arca Comunal",
+		value: "Arca Comunal",
+		showWhen: "bank_sends_to_player" as const,
+		sortOrder: 10,
+	},
+	{
+		label: "Deshipoteca",
+		value: "Deshipoteca",
+		showWhen: "bank_sends_to_player" as const,
+		sortOrder: 11,
+	},
+	{
+		label: "Pozo",
+		value: "Pozo",
+		showWhen: "free_parking_sends_to_player" as const,
+		sortOrder: 12,
+	},
+] as const;
+
 function TransactionFormContentComponent({
 	tableroId,
 	players,
@@ -53,124 +121,39 @@ function TransactionFormContentComponent({
 	onDescriptionChange,
 	onSuccess,
 }: TransactionFormContentProps) {
-	const [isSubmitting, startTransition] = useTransition();
-	const [animationTrigger, setAnimationTrigger] = useState(0);
-	const formRef = useRef<HTMLFormElement>(null);
-	const router = useRouter();
-
-	const isLoading = isPending || isSubmitting;
-
-	// Filtrar jugadores para el selector "Desde"
-	const fromPlayers = useMemo(
-		() =>
-			players.filter((p) => {
-				if (p.id === currentPlayerId) return true;
-				if (p.isSystemPlayer && isCreator) return true;
-				return false;
-			}),
-		[players, currentPlayerId, isCreator],
-	);
-
-	// Determinar el jugador origen actual (para filtrar en "Hacia")
-	const actualFromPlayerId = isCreator ? fromPlayerId : currentPlayerId;
-
-	// Obtener el jugador origen seleccionado
-	const fromPlayer = useMemo(() => {
-		if (!actualFromPlayerId) return null;
-		return players.find((p) => p.id === actualFromPlayerId);
-	}, [players, actualFromPlayerId]);
-
-	// Verificar si el jugador origen es el banco
-	const isFromBank =
-		fromPlayer?.isSystemPlayer && fromPlayer?.systemPlayerType === "bank";
-
-	// Saldo máximo: no permitir monto mayor al del jugador origen (el banco no tiene límite)
-	const maxAmount = isFromBank
-		? undefined
-		: fromPlayer
-			? fromPlayer.balance
-			: undefined;
-
-	// Filtrar jugadores para el selector "Hacia"
-	const toPlayers = useMemo(
-		() => players.filter((p) => p.id !== actualFromPlayerId),
-		[players, actualFromPlayerId],
-	);
-
-	// Handler para botones de acceso rápido (no superar saldo del jugador origen)
-	const handleQuickAmount = useCallback(
-		(quickAmount: number, quickDescription?: string) => {
-			const currentAmount = parseFloat(amount) || 0;
-			let newAmount = currentAmount + quickAmount;
-			if (maxAmount != null && newAmount > maxAmount) {
-				newAmount = maxAmount;
-			}
-			onAmountChange(newAmount.toString());
-			if (quickDescription) {
-				onDescriptionChange(quickDescription);
-			}
-		},
-		[amount, maxAmount, onAmountChange, onDescriptionChange],
-	);
-
-	// Handler para cambiar fromPlayerId y resetear toPlayerId si es necesario
-	const handleFromPlayerChange = useCallback(
-		(value: string) => {
-			onFromPlayerChange(value);
-			// Si el toPlayerId actual es igual al nuevo fromPlayerId, resetearlo
-			if (toPlayerId === value) {
-				onToPlayerChange("");
-			}
-		},
-		[toPlayerId, onFromPlayerChange, onToPlayerChange],
-	);
-
-	// Handler para cambiar toPlayerId
-	const handleToPlayerChange = useCallback(
-		(value: string) => {
-			onToPlayerChange(value);
-			// Si es creador y no hay fromPlayerId seleccionado, seleccionar automáticamente su jugador
-			if (isCreator && !fromPlayerId && currentPlayerId) {
-				onFromPlayerChange(currentPlayerId);
-			}
-		},
-		[
-			isCreator,
-			fromPlayerId,
-			currentPlayerId,
-			onToPlayerChange,
-			onFromPlayerChange,
-		],
-	);
-
-	// Acción del formulario
-	const handleSubmit = useCallback(
-		async (formData: FormData) => {
-			const amountNum = parseInt(formData.get("amount") as string) || 0;
-			if (maxAmount != null && amountNum > maxAmount) {
-				toast.error(
-					`El monto no puede ser mayor a tu saldo ($${maxAmount.toLocaleString()})`,
-				);
-				return;
-			}
-
-			startTransition(async () => {
-				const result = await actionCreateTransaction(null, formData);
-
-				if (result?.error) {
-					toast.error(result.error);
-					return;
-				}
-
-				if (result?.success) {
-					setAnimationTrigger((prev) => prev + 1);
-					onSuccess();
-					router.refresh();
-				}
-			});
-		},
-		[maxAmount, onSuccess, router],
-	);
+	const {
+		formRef,
+		isLoading,
+		animationTrigger,
+		fromPlayers,
+		toPlayers,
+		isFromBank,
+		maxAmount,
+		isBankReceiving,
+		isFreeParkingReceiving,
+		isPlayerSendingToPlayer,
+		isBankSendingToPlayer,
+		isFreeParkingSendingToPlayer,
+		handleQuickAmount,
+		handleFromPlayerChange,
+		handleToPlayerChange,
+		handleSubmit,
+	} = useTransactionFormContent({
+		tableroId,
+		players,
+		currentPlayerId,
+		isCreator,
+		fromPlayerId,
+		toPlayerId,
+		amount,
+		description,
+		isPending,
+		onFromPlayerChange,
+		onToPlayerChange,
+		onAmountChange,
+		onDescriptionChange,
+		onSuccess,
+	});
 
 	return (
 		<>
@@ -247,32 +230,22 @@ function TransactionFormContentComponent({
 						<option value="Pago de servicios" />
 						<option value="Compra de propiedad" />
 						<option value="Hipoteca" />
+						<option value="Deshipoteca" />
+						<option value="Salida" />
+						<option value="Fortuna" />
+						<option value="Arca Comunal" />
+						<option value="Pozo" />
 					</datalist>
-					<div className="flex gap-2 flex-wrap">
-						{(
-							[
-								{ label: "Renta", value: "Renta" },
-								{ label: "Compra", value: "Compra de propiedad" },
-								{ label: "Casa", value: "Compra de casa" },
-								{ label: "Hotel", value: "Compra de hotel" },
-								{ label: "Hipoteca", value: "Hipoteca" },
-								{ label: "Impuestos", value: "Impuestos" },
-								{ label: "Servicios", value: "Pago de servicios" },
-							] as const
-						).map(({ label, value }) => (
-							<Button
-								key={value}
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={() => onDescriptionChange(value)}
-								disabled={isLoading}
-								className="text-xs"
-							>
-								{label}
-							</Button>
-						))}
-					</div>
+					<QuickDescriptionButtons
+						buttons={DESCRIPTION_BUTTONS}
+						isBankReceiving={isBankReceiving}
+						isFreeParkingReceiving={isFreeParkingReceiving}
+						isPlayerSendingToPlayer={isPlayerSendingToPlayer}
+						isBankSendingToPlayer={isBankSendingToPlayer}
+						isFreeParkingSendingToPlayer={isFreeParkingSendingToPlayer}
+						onDescriptionChange={onDescriptionChange}
+						disabled={isLoading}
+					/>
 				</div>
 
 				<Button type="submit" disabled={isLoading} className="w-full" size="lg">
