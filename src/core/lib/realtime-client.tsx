@@ -2,12 +2,12 @@
 
 import {
 	createContext,
+	type ReactNode,
 	useCallback,
 	useContext,
 	useEffect,
 	useRef,
 	useState,
-	type ReactNode,
 } from "react";
 import type { RealtimeEvents } from "./realtime";
 
@@ -28,6 +28,8 @@ interface UseRealtimeOptions<E extends keyof RealtimeEvents> {
 		channel: string;
 	}) => void;
 	enabled?: boolean;
+	/** Parámetros extra para la URL (ej. playerId, playerName para presencia) */
+	params?: Record<string, string>;
 }
 
 export function RealtimeProvider({
@@ -48,7 +50,7 @@ export function createRealtime<T extends RealtimeEvents = RealtimeEvents>() {
 	function useRealtime<E extends keyof RealtimeEvents>(
 		options: UseRealtimeOptions<E>,
 	) {
-		const { channels = [], events, onData, enabled = true } = options;
+		const { channels = [], events, onData, enabled = true, params } = options;
 		const ctx = useContext(RealtimeContext);
 		const [status, setStatus] = useState<RealtimeStatus>("disconnected");
 		const eventSourceRef = useRef<EventSource | null>(null);
@@ -60,15 +62,24 @@ export function createRealtime<T extends RealtimeEvents = RealtimeEvents>() {
 
 		const channelsKey = channels.join(",");
 		const eventsKey = events.join(",");
+		const paramsKey = params ? JSON.stringify(params) : "";
 
 		const connect = useCallback(() => {
 			if (!ctx || !channelsKey || !eventsKey) return;
 
-			const params = new URLSearchParams({
+			const searchParams = new URLSearchParams({
 				channels: channelsKey,
 				events: eventsKey,
 			});
-			const eventSource = new EventSource(`${ctx.url}?${params}`);
+			const parsedParams = paramsKey
+				? (JSON.parse(paramsKey) as Record<string, string>)
+				: undefined;
+			if (parsedParams) {
+				for (const [key, value] of Object.entries(parsedParams)) {
+					if (value) searchParams.set(key, value);
+				}
+			}
+			const eventSource = new EventSource(`${ctx.url}?${searchParams}`);
 			eventSourceRef.current = eventSource;
 
 			setStatus("connecting");
@@ -88,7 +99,7 @@ export function createRealtime<T extends RealtimeEvents = RealtimeEvents>() {
 					// Ignorar mensajes no JSON (ej: keepalive)
 				}
 			};
-		}, [ctx, channelsKey, eventsKey]);
+		}, [ctx, channelsKey, eventsKey, paramsKey]);
 
 		const disconnect = useCallback(() => {
 			if (eventSourceRef.current) {

@@ -174,7 +174,7 @@ export default function TableroRealtimeWrapper({
 		[],
 	);
 
-	useTableroRealtime({
+	const { connectedPlayerIds } = useTableroRealtime({
 		tableroId,
 		currentPlayerId,
 		onPlayersChange: setPlayers,
@@ -234,6 +234,7 @@ export default function TableroRealtimeWrapper({
 							currentPlayerId={currentPlayerId}
 							onPlayerClick={handlePlayerClick}
 							showSystemPlayers={true}
+							connectedPlayerIds={connectedPlayerIds}
 						/>
 					</div>
 

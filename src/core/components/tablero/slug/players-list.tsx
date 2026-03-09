@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import DeleteBtnPlayer from "@/src/core/components/tablero/delete-btn-player";
 import {
 	Avatar,
@@ -16,7 +17,6 @@ import {
 } from "@/src/core/components/ui/carousel";
 import { usePlayersRealtime } from "@/src/core/hooks/tablero/use-players-realtime";
 import type { TPlayer, User } from "@/src/core/lib/db/schema";
-import { useMemo } from "react";
 
 type PlayerWithUser = TPlayer & {
 	user?: User | null;
@@ -30,6 +30,7 @@ interface PlayersListProps {
 	enableRealtime?: boolean;
 	onPlayerClick?: (playerId: string) => void;
 	showSystemPlayers?: boolean; // Si es true, muestra banco y parada libre
+	connectedPlayerIds?: Set<string>;
 }
 
 export default function PlayersList({
@@ -40,6 +41,7 @@ export default function PlayersList({
 	enableRealtime = false,
 	onPlayerClick,
 	showSystemPlayers = false,
+	connectedPlayerIds,
 }: PlayersListProps) {
 	// Si enableRealtime es true, usamos el hook de realtime
 	// Si no, usamos los players pasados directamente (para cuando se usa dentro del wrapper)
@@ -132,15 +134,33 @@ export default function PlayersList({
 										</div>
 									)}
 									<div className="flex flex-col items-center gap-2 mb-2">
-										<Avatar className="size-12">
-											<AvatarImage
-												src={player.user?.image || undefined}
-												alt={player.name}
-											/>
-											<AvatarFallback className="bg-primary/10 text-primary font-semibold">
-												{player.name.charAt(0).toUpperCase()}
-											</AvatarFallback>
-										</Avatar>
+										<div className="relative">
+											<Avatar className="size-12">
+												<AvatarImage
+													src={player.user?.image || undefined}
+													alt={player.name}
+												/>
+												<AvatarFallback className="bg-primary/10 text-primary font-semibold">
+													{player.name.charAt(0).toUpperCase()}
+												</AvatarFallback>
+											</Avatar>
+											{connectedPlayerIds !== undefined && (
+												<span
+													className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-background ${
+														player.isSystemPlayer ||
+														connectedPlayerIds.has(player.id)
+															? "bg-green-500"
+															: "bg-red-500"
+													}`}
+													title={
+														player.isSystemPlayer ||
+														connectedPlayerIds.has(player.id)
+															? "Conectado"
+															: "Desconectado"
+													}
+												/>
+											)}
+										</div>
 										<div className="flex-1 min-w-0 w-full text-center">
 											<p className="font-semibold text-sm truncate">
 												{player.name}

@@ -1,5 +1,5 @@
-import { redis } from "@/src/core/lib/redis";
 import { NextRequest } from "next/server";
+import { redis } from "@/src/core/lib/redis";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -8,6 +8,9 @@ export async function GET(request: NextRequest) {
 	const { searchParams } = new URL(request.url);
 	const channelsParam = searchParams.get("channels");
 	const eventsParam = searchParams.get("events");
+	const playerId = searchParams.get("playerId");
+	const playerName = searchParams.get("playerName");
+	const tableroId = searchParams.get("tableroId");
 
 	const channels = channelsParam
 		? channelsParam.split(",").filter(Boolean).slice(0, 20)
@@ -24,6 +27,7 @@ export async function GET(request: NextRequest) {
 	const stream = new ReadableStream({
 		async start(controller) {
 			const subscriber = redis.duplicate();
+			const publisher = redis.duplicate();
 
 			const messageHandler = (_channel: string, message: string) => {
 				try {
@@ -47,6 +51,31 @@ export async function GET(request: NextRequest) {
 			await subscriber.subscribe(...channels);
 			subscriber.on("message", messageHandler);
 
+			// Notificar que el jugador se conectó (o reconectó)
+			const publishEnter = async () => {
+				try {
+					if (
+						playerId &&
+						playerName &&
+						tableroId &&
+						channels.includes(`tablero:${tableroId}`)
+					) {
+						const message = JSON.stringify({
+							event: "tablero.presence.enter",
+							data: {
+								playerId,
+								playerName,
+								tableroId,
+							},
+						});
+						await publisher.publish(`tablero:${tableroId}`, message);
+					}
+				} catch {
+					// Ignorar errores al publicar
+				}
+			};
+			await publishEnter();
+
 			// Mantener la conexión viva con comentarios periódicos
 			const keepAlive = setInterval(() => {
 				try {
@@ -56,11 +85,37 @@ export async function GET(request: NextRequest) {
 				}
 			}, 15000);
 
-			// Cleanup al cerrar
-			request.signal.addEventListener("abort", () => {
+			// Cleanup al cerrar: publicar presencia leave si hay datos del jugador
+			const publishLeave = async () => {
+				try {
+					if (
+						playerId &&
+						playerName &&
+						tableroId &&
+						channels.includes(`tablero:${tableroId}`)
+					) {
+						const message = JSON.stringify({
+							event: "tablero.presence.leave",
+							data: {
+								playerId,
+								playerName,
+								tableroId,
+							},
+						});
+						await publisher.publish(`tablero:${tableroId}`, message);
+					}
+				} catch {
+					// Ignorar errores al publicar
+				} finally {
+					await publisher.quit();
+				}
+			};
+
+			request.signal.addEventListener("abort", async () => {
 				clearInterval(keepAlive);
 				subscriber.unsubscribe(...channels);
 				subscriber.disconnect();
+				await publishLeave();
 				controller.close();
 			});
 		},

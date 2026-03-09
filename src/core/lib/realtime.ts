@@ -38,6 +38,16 @@ export type RealtimeEvents = {
 	};
 	"tablero.tablero.updated": { id: string; isEnded: boolean };
 	"tablero.tablero.deleted": { id: string };
+	"tablero.presence.leave": {
+		playerId: string;
+		playerName: string;
+		tableroId: string;
+	};
+	"tablero.presence.enter": {
+		playerId: string;
+		playerName: string;
+		tableroId: string;
+	};
 };
 
 function createChannel(name: string) {

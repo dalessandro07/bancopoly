@@ -1,9 +1,9 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { TPlayer, TTransaction } from "@/src/core/lib/db/schema";
 import { useRealtime } from "@/src/core/lib/realtime-client";
-import { useCallback, useEffect, useRef } from "react";
-import { toast } from "sonner";
 
 type PlayerWithUser = TPlayer & {
 	user?: {
@@ -97,6 +97,9 @@ export function useTableroRealtime({
 }: UseTableroRealtimeProps) {
 	const playersRef = useRef(players);
 	const processedTransactionsRef = useRef<Set<string>>(new Set());
+	const [connectedPlayerIds, setConnectedPlayerIds] = useState<Set<string>>(
+		() => (currentPlayerId ? new Set([currentPlayerId]) : new Set()),
+	);
 
 	// Mantener refs actualizados
 	useEffect(() => {
@@ -363,6 +366,18 @@ export function useTableroRealtime({
 		[tableroId, onTableroDeleted],
 	);
 
+	// Parámetros de presencia para notificar al desconectar
+	const presenceParams = useMemo(() => {
+		if (!currentPlayerId) return undefined;
+		const currentPlayer = players.find((p) => p.id === currentPlayerId);
+		if (!currentPlayer || currentPlayer.isSystemPlayer) return undefined;
+		return {
+			playerId: currentPlayerId,
+			playerName: currentPlayer.name,
+			tableroId,
+		};
+	}, [currentPlayerId, players, tableroId]);
+
 	// Suscribirse a eventos de realtime usando canales específicos del tablero
 	useRealtime({
 		channels: [`tablero:${tableroId}`],
@@ -373,7 +388,10 @@ export function useTableroRealtime({
 			"tablero.transaction.inserted",
 			"tablero.tablero.updated",
 			"tablero.tablero.deleted",
+			"tablero.presence.leave",
+			"tablero.presence.enter",
 		],
+		params: presenceParams,
 		onData({ event, data, channel }) {
 			if (channel !== `tablero:${tableroId}`) return;
 
@@ -435,7 +453,72 @@ export function useTableroRealtime({
 				case "tablero.tablero.deleted":
 					handleTableroDeleted(data as unknown as { id: string });
 					break;
+				case "tablero.presence.leave": {
+					const leaveData = data as unknown as {
+						playerId: string;
+						playerName: string;
+						tableroId: string;
+					};
+					if (leaveData.tableroId === tableroId) {
+						setConnectedPlayerIds((prev) => {
+							const next = new Set(prev);
+							next.delete(leaveData.playerId);
+							return next;
+						});
+					}
+					if (
+						leaveData.tableroId === tableroId &&
+						leaveData.playerId !== currentPlayerId
+					) {
+						const mensajes = [
+							`${leaveData.playerName} se evaporó`,
+							`${leaveData.playerName} desapareció del mapa`,
+							`${leaveData.playerName} se fue a por el gato`,
+							`${leaveData.playerName} perdió la señal (y las esperanzas)`,
+							`${leaveData.playerName} se fue a revisar el WiFi`,
+							`${leaveData.playerName} parece que está en otra aplicación`,
+							`${leaveData.playerName} está chateando`,
+							`${leaveData.playerName} no está prestando atención al juego`,
+						];
+						toast.info(mensajes[Math.floor(Math.random() * mensajes.length)], {
+							position: "top-center",
+						});
+					}
+					break;
+				}
+				case "tablero.presence.enter": {
+					const enterData = data as unknown as {
+						playerId: string;
+						playerName: string;
+						tableroId: string;
+					};
+					if (enterData.tableroId === tableroId) {
+						setConnectedPlayerIds((prev) =>
+							new Set(prev).add(enterData.playerId),
+						);
+					}
+					if (
+						enterData.tableroId === tableroId &&
+						enterData.playerId !== currentPlayerId
+					) {
+						const mensajes = [
+							`${enterData.playerName} reapareció de las tinieblas`,
+							`${enterData.playerName} volvió de las compras`,
+							`${enterData.playerName} finalmente reconectó el WiFi`,
+							`${enterData.playerName} regresó del mundo paralelo`,
+							`${enterData.playerName} está de vuelta (y con ganas de ganar)`,
+							`${enterData.playerName} volvió para seguir jugando`,
+							`${enterData.playerName} ya dejó de chatear`,
+						];
+						toast.info(mensajes[Math.floor(Math.random() * mensajes.length)], {
+							position: "top-center",
+						});
+					}
+					break;
+				}
 			}
 		},
 	});
+
+	return { connectedPlayerIds };
 }
